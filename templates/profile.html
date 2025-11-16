@@ -1,0 +1,278 @@
+{% extends "dashboard.html" %}
+{% block content %}
+    <div class="container">
+    {% set _msgs = get_flashed_messages(with_categories=True, category_filter=['profile']) %}
+    {% if _msgs %}
+      <div style="position:fixed; top:72px; right:16px; z-index:2000; width:clamp(200px,28%,420px);">
+        {% for cat, m in _msgs %}
+          <div class="card" style="margin-bottom:10px; padding:10px 12px;">{{ m }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+ <style>
+/* Modern Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+    background-color: #f7f8fa;
+    color: #333;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    font-family: "Open Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+/* Card Styling */
+.card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+  margin: 40px auto;
+  max-width: 780px;
+}
+
+.card h2 {
+  margin-bottom: 28px;
+  font-size: 26px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+/* Row Layout */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* Avatar Section */
+.avatar-section {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 200px;
+}
+
+.avatar-wrapper {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  margin-bottom: 12px;
+}
+
+.avatar-wrapper img,
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+}
+
+/* Upload button */
+.avatar-section input[type="file"] {
+  width: 100%;
+  padding: 8px;
+  font-size: 13px;
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 10px;
+}
+
+.avatar-section input[type="file"]:hover {
+  border-color: #667eea;
+  background: #f7fafc;
+}
+
+/* Details Card */
+.details-card {
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Form Elements */
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #4a5568;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  transition: all 0.3s ease;
+  color: #2d3748;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.input:disabled {
+  background: #f7fafc;
+  color: #718096;
+}
+
+.input::placeholder {
+  color: #a0aec0;
+}
+
+/* Buttons */
+.btn {
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .row {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .avatar-section {
+    width: 100%;
+  }
+
+  .details-card {
+    width: 100%;
+  }
+
+  .avatar-wrapper {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .avatar-wrapper {
+    width: 100px;
+    height: 100px;
+  }
+
+  .btn {
+    width: 100%;
+  }
+}
+</style>
+
+<div class="card">
+  <h2>My Profile</h2>
+
+  <div class="row">
+
+    <!-- Avatar -->
+    <div class="avatar-section">
+      <div class="avatar-wrapper">
+        {% if user.profile_pic %}
+          <img src="/{{ user.profile_pic }}" alt="avatar" class="avatar-image">
+        {% else %}
+          <div class="avatar-placeholder">
+            {{ user.username[:1] | upper }}
+          </div>
+        {% endif %}
+      </div>
+
+      <form action="{{ url_for('profile_upload') }}" method="post" enctype="multipart/form-data">
+        <input type="file" name="avatar" accept="image/*">
+        <br>
+        <br>
+        <div><button class="btn" type="submit">Upload</button></div>
+      </form>
+    </div>
+
+    <!-- Details -->
+    <div class="card details-card">
+      <form method="post" action="{{ url_for('profile') }}">
+
+        <div class="row gap">
+          <div class="grow">
+            <label>Username</label>
+            <input class="input" value="{{ user.username }}" disabled>
+          </div>
+
+          <div class="grow">
+            <label>Email</label>
+            <input class="input" value="{{ user.email }}" disabled>
+          </div>
+        </div>
+
+        <div class="input-block">
+          <label>Address</label>
+          <input class="input" name="address" placeholder="Enter your address" value="{{ user.address or '' }}">
+        </div>
+        <br>
+        <div class="row right">
+          <button class="btn" type="submit">Save</button>
+        </div>
+
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

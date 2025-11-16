@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email OTP Verification</title>
+  <style>
+    body {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      animation: slideUp 0.6s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .email-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .email-icon svg {
+      width: 40px;
+      height: 40px;
+      fill: white;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #2d3748;
+      margin: 0 0 12px 0;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: #718096;
+      margin: 0 0 32px 0;
+      line-height: 1.6;
+    }
+
+    .otp-container {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .otp-input {
+      width: 56px;
+      height: 56px;
+      font-size: 24px;
+      font-weight: 600;
+      text-align: center;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      outline: none;
+      background: #f7fafc;
+      color: #2d3748;
+      transition: all 0.3s ease;
+    }
+
+    .otp-input:focus {
+      border-color: #667eea;
+      background: white;
+      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+      transform: scale(1.05);
+    }
+
+    .otp-input:hover {
+      border-color: #cbd5e0;
+    }
+
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    .btn {
+      padding: 14px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    .btn:active::before {
+      width: 300px;
+      height: 300px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: #f7fafc;
+      color: #4a5568;
+      border: 2px solid #e2e8f0;
+    }
+
+    .btn-secondary:hover {
+      background: #edf2f7;
+      border-color: #cbd5e0;
+      transform: translateY(-2px);
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 30px 20px;
+      }
+      h1 { font-size: 24px; }
+      .subtitle { font-size: 14px; }
+      .otp-input {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+      }
+      .otp-container { gap: 8px; }
+    }
+
+    @media (max-width: 360px) {
+      .otp-input {
+        width: 42px;
+        height: 42px;
+        font-size: 18px;
+      }
+      .otp-container { gap: 6px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="container">
+      <div class="email-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 
+          2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 
+          4l-8 5-8-5V6l8 5 8-5v2z"/>
+        </svg>
+      </div>
+      <h1>Verify your Email</h1>
+      <p class="subtitle">Enter the 6-character OTP sent to your email.</p>
+
+      <form method="POST" action="{{ url_for('otpverify', signed_userdata=signed_userdata) }}">
+        <div class="otp-container">
+          <input type="text" class="otp-input" name="otp1" maxlength="1" required>
+          <input type="text" class="otp-input" name="otp2" maxlength="1" required>
+          <input type="text" class="otp-input" name="otp3" maxlength="1" required>
+          <input type="text" class="otp-input" name="otp4" maxlength="1" required>
+          <input type="text" class="otp-input" name="otp5" maxlength="1" required>
+          <input type="text" class="otp-input" name="otp6" maxlength="1" required>
+        </div>
+
+        <div class="button-group">
+          <button type="submit" class="btn btn-primary" >Verify</button>
+        </div>
+      </form>
+    </div>
+  </main>
+</body>
+</html>

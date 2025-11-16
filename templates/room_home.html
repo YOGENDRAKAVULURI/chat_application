@@ -1,0 +1,181 @@
+{% extends "dashboard.html" %}
+
+{% block content %}
+
+<!-- Create Group -->
+<div class="card">
+  <h2 style="margin:0;">Create Group</h2>
+</div>
+
+<div class="card">
+  <label style="font-weight:700;">Group name</label>
+  <input id="gname" class="input" placeholder="e.g., Project Alpha Team"
+         style="padding:12px 1px; border:1.5px solid #e2e8f0; border-radius:12px; background:#f7fafc; width:100%;"/>
+</div>
+
+<div class="card">
+  <div class="row" style="justify-content:space-between;">
+    <div style="font-weight:700;">Add members</div>
+    <span class="badge"><span id="selcount">0</span> selected</span>
+  </div>
+  <div class="row" style="margin-top:10px;">
+    <input id="search" class="input" placeholder="Search users by name or email" oninput="doSearch()"
+           style="padding:12px 14px; border:1.5px solid #e2e8f0; border-radius:12px; background:#f7fafc; width:100%;"/>
+  </div>
+  <div id="results" style="max-height:260px; overflow:auto; margin-top:8px;"></div>
+</div>
+
+<div class="card">
+  <div style="font-weight:700; margin-bottom:8px;">Selected members</div>
+  <ul id="selected" style="padding-left:18px;"></ul>
+  <div class="row" style="justify-content:flex-end; margin-top:8px;">
+    <button class="btn" onclick="createGroup()">Create Group</button>
+  </div>
+</div>
+
+<!-- Active Groups -->
+<div class="card">
+  <div class="row" style="justify-content:space-between;">
+    <h2 style="margin:0;">Active Groups</h2>
+    <span class="muted">Groups you belong to</span>
+  </div>
+  <div id="groups_list" style="margin-top:12px;">
+    <div class="muted">Loading groups…</div>
+  </div>
+</div>
+
+<script>
+const MY_USER_ID = "{{ user_id|tojson }}";  // defined in app.py render_template
+
+let selected = new Map();
+
+async function doSearch(){
+  const q = document.getElementById('search').value.trim();
+  const box = document.getElementById('results');
+  if (!q) { box.innerHTML=''; return; }
+  try{
+    const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    box.innerHTML = '';
+    (data.results || []).forEach(u=>{
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.style.justifyContent = 'space-between';
+      row.style.padding = '6px 0';
+      row.style.borderBottom = '1px solid #f1f1f1';
+      row.innerHTML = `<div>${u.username} <span class="badge">${u.email}</span></div>`;
+      const btn = document.createElement('button');
+      btn.className = 'btn'; btn.textContent = '+';
+      btn.onclick = ()=>{ selected.set(u.user_id, u); renderSelected(); };
+      row.appendChild(btn);
+      box.appendChild(row);
+    });
+  }catch(e){
+    box.innerHTML = `<div class="muted">Failed to search.</div>`;
+  }
+}
+
+function renderSelected(){
+  const ul = document.getElementById('selected');
+  const selcount = document.getElementById('selcount');
+  ul.innerHTML = '';
+  for(const [id,u] of selected){
+    const li = document.createElement('li');
+    li.innerHTML = `${u.username} <span class="badge">${u.email}</span> `;
+    const rm = document.createElement('button'); rm.className='btn danger'; rm.textContent='Remove';
+    rm.onclick=()=>{ selected.delete(id); renderSelected(); };
+    li.appendChild(rm);
+    ul.appendChild(li);
+  }
+  selcount.textContent = selected.size;
+}
+
+async function createGroup(){
+  const name = document.getElementById('gname').value.trim();
+  if(!name){ alert('Enter a group name'); return; }
+  if(selected.size===0){ alert('Select at least one member'); return; }
+  const body = { name, members: Array.from(selected.keys()) };
+  const res = await fetch('/api/groups', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if(data.ok){
+    await loadGroups(); // refresh active list
+    // Optionally go straight to the room:
+    // window.location = `/room?gid=${data.group_id}`;
+  }else{
+    alert(data.error || 'Failed to create group');
+  }
+}
+
+async function loadGroups(){
+  const box = document.getElementById('groups_list');
+  try{
+    const res = await fetch('/api/groups');
+    const data = await res.json();
+    if(!data.groups || data.groups.length===0){
+      box.innerHTML = `<div class="muted">No groups yet. Create one above.</div>`;
+      return;
+    }
+    box.innerHTML = '';
+    data.groups.forEach(g=>{
+      const wrapper = document.createElement('div');
+      wrapper.style.borderBottom = '1px solid #f1f1f1';
+      wrapper.style.padding = '10px 0';
+
+      const title = document.createElement('div');
+      title.style.display = 'flex';
+      title.style.justifyContent = 'space-between';
+      title.style.alignItems = 'center';
+
+      const left = document.createElement('div');
+      left.innerHTML = `<div style="font-weight:700;">${g.name}</div>
+                        <div class="muted">${(g.member_emails || []).join(', ')}</div>`;
+
+      const right = document.createElement('div');
+      right.className = 'row';
+      const unread = document.createElement('span');
+      unread.className = 'badge';
+      unread.textContent = `Unread: ${g.unread}`;
+
+      const openBtn = document.createElement('a');
+      openBtn.className = 'btn';
+      openBtn.href = `/room?gid=${g.id}`;
+      openBtn.textContent = 'Open';
+
+      // delete only if I am creator
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn danger';
+      delBtn.textContent = 'Delete';
+      delBtn.onclick = async ()=>{
+        if(!confirm('Delete this group?')) return;
+        const resp = await fetch(`/api/groups/${g.id}`, { method: 'DELETE' });
+        const out = await resp.json();
+        if(out.ok){ loadGroups(); }
+        else { alert(out.error || 'Delete failed'); }
+      };
+
+      right.appendChild(unread);
+      right.appendChild(openBtn);
+      right.appendChild(delBtn);
+      if (g.created_by === MY_USER_ID) right.appendChild(delBtn);
+
+      title.appendChild(left);
+      title.appendChild(right);
+
+      const sub = document.createElement('div');
+      sub.className = 'muted';
+      sub.textContent = `Last activity: ${g.last_activity || '-'}`;
+
+      wrapper.appendChild(title);
+      wrapper.appendChild(sub);
+      box.appendChild(wrapper);
+    });
+  }catch(e){
+    box.innerHTML = `<div class="muted">Failed to load groups.</div>`;
+  }
+}
+
+loadGroups();
+</script>
+{% endblock %}

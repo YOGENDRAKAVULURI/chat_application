@@ -1,0 +1,655 @@
+{% extends "dashboard.html" %}
+
+{% block content %}
+<style>
+/* personal_chat.css */
+
+/* Keep navbar exactly as before; ensure .content is pushed right */
+.content {
+  margin-left: 12rem !important;
+  width: calc(100% - 12rem) !important;
+  box-sizing: border-box;
+  padding: 2.5rem;
+}
+
+/* Layout card */
+.pc-card {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px;
+  border: 1px solid #e6edf3;
+  box-shadow: 0 2px 8px rgba(9,30,66,0.03);
+}
+
+/* Left column (sidebar) */
+.pc-left {
+  width: 360px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Heading */
+.pc-left h3 {
+  margin: 0 0 12px 0;
+  font-size: 1.05rem;
+}
+
+/* Search box */
+.pc-search-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pc-search {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+/* results / recent list containers */
+.pc-results,
+.pc-recent {
+  margin-top: 8px;
+  max-height: 420px;
+  overflow: auto;
+  border-radius: 8px;
+  background: transparent;
+}
+
+/* list item */
+.pc-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 8px;
+  border-bottom: 1px solid #f1f1f1;
+  gap: 10px;
+  cursor: pointer;
+}
+.pc-list-item:hover { background: #fafafa; }
+
+.pc-list-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pc-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid #eef2f6;
+}
+
+.pc-item-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.pc-item-name {
+  font-weight: 700;
+  font-size: 0.96rem;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pc-item-sub {
+  font-size: 12px;
+  color: #6a778e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Right column: chat view */
+.pc-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Top bar for chat */
+.pc-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pc-topbar-left {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.pc-other-pic {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #eee;
+  display: none; /* show only when src present via JS */
+}
+
+/* messages area */
+.pc-messages {
+  height: 60vh;
+  min-height: 300px;
+  overflow: auto;
+  background: #f7fafc;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+/* message row */
+.msg-row {
+  display: flex;
+  width: 100%;
+}
+
+.msg-row.me {
+  justify-content: flex-end;
+}
+
+.msg-bubble {
+  max-width: 75%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  word-break: break-word;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  background: #fff;
+  color: #222;
+}
+
+/* bubble for my messages */
+.msg-bubble.me {
+  background: linear-gradient(135deg,#667eea,#764ba2);
+  color: #fff;
+}
+
+/* message meta (name and timestamp) */
+.msg-meta {
+  font-size: 12px;
+  color: rgba(0,0,0,0.55);
+  margin-bottom: 6px;
+}
+
+/* attachments */
+.msg-bubble img,
+.msg-bubble video {
+  display: block;
+  max-width: 100%;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+/* attachments link style */
+.msg-attachment {
+  display: inline-block;
+  margin-top: 8px;
+  text-decoration: none;
+  color: #667eea;
+}
+.msg-attachment.me { color: #fff; }
+
+/* input area */
+.pc-input-area {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  position: relative; /* for emoji picker absolute positioning */
+}
+
+.pc-input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.btn {
+  background: #6d28d9;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.btn:hover { opacity: 0.95; }
+
+/* subtle secondary button */
+.btn.secondary {
+  background: #eef2ff;
+  color: #4c1d95;
+}
+
+/* emoji picker */
+.pc-emoji-picker {
+  display: none;
+  position: absolute;
+  bottom: 60px;
+  right: 10px;
+  background:#fff;
+  border:1px solid #ddd;
+  border-radius:8px;
+  padding:10px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  width: 220px;
+  box-sizing: border-box;
+}
+.pc-emoji-grid {
+  display:grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+.pc-emoji-grid span {
+  cursor: pointer;
+  font-size: 20px;
+  text-align: center;
+}
+
+/* small utility classes */
+.muted { color: #6a778e; font-size: 0.95rem; padding:8px; }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .pc-left { width: 300px; }
+}
+
+@media (max-width: 768px) {
+  /* Use full width on small screens; account mobile bottom navbar */
+  .content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding-bottom: 4.75rem;
+  }
+  .pc-card { flex-direction: column; }
+  .pc-left { width: 100%; }
+  .pc-right { width: 100%; }
+  .pc-input-area { position: relative; }
+  .pc-emoji-picker { right: 12px; bottom: 72px; }
+}
+</style>
+
+<div class="card pc-card">
+  <!-- Left column: search + recent chats -->
+  <div class="pc-left">
+    <h3>Personal Chats</h3>
+
+    <div class="pc-search-wrap">
+      <input id="pc_search" class="pc-search" placeholder="Search people by name or email" oninput="doSearch()" />
+      <div id="search_results" class="pc-results"></div>
+    </div>
+
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <strong>Recent</strong>
+        <button class="btn" onclick="loadRecent()">Refresh</button>
+      </div>
+      <div id="recent_list" class="pc-recent"></div>
+    </div>
+  </div>
+
+  <!-- Right column: chat view -->
+  <div class="pc-right">
+    <!-- top bar with other user info -->
+    <div class="pc-topbar">
+      <div class="pc-topbar-left">
+        <img id="other_pic" class="pc-other-pic" src="" alt="">
+        <div>
+          <div id="other_name">Select a person to chat</div>
+          <div id="other_status">offline</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- messages area -->
+    <div id="pc_messages" class="pc-messages"></div>
+
+    <!-- input area: text + file + send + emoji -->
+    <div id="input_area" class="pc-input-area">
+      <input id="pc_input" class="pc-input" placeholder="Type a message (emoji supported)" onkeydown="if(event.key==='Enter') sendPersonal()">
+      <input id="pc_file" type="file" onchange="uploadFile(event)">
+      <button class="btn" onclick="document.getElementById('pc_file').click()">Attach</button>
+      <button class="btn" onclick="toggleEmojiPicker('pc_emoji_picker')">😀</button>
+      <button class="btn" onclick="sendPersonal()">Send</button>
+      <!-- Emoji picker dropdown -->
+      <div id="pc_emoji_picker" class="pc-emoji-picker">
+        <div class="pc-emoji-grid">
+          <span onclick="insertEmoji('😀', 'pc_input')">😀</span>
+          <span onclick="insertEmoji('😂', 'pc_input')">😂</span>
+          <span onclick="insertEmoji('❤️', 'pc_input')">❤️</span>
+          <span onclick="insertEmoji('👍', 'pc_input')">👍</span>
+          <span onclick="insertEmoji('🎉', 'pc_input')">🎉</span>
+          <span onclick="insertEmoji('🔥', 'pc_input')">🔥</span>
+          <span onclick="insertEmoji('😎', 'pc_input')">😎</span>
+          <span onclick="insertEmoji('👀', 'pc_input')">👀</span>
+          <span onclick="insertEmoji('💯', 'pc_input')">💯</span>
+          <span onclick="insertEmoji('🤔', 'pc_input')">🤔</span>
+          <span onclick="insertEmoji('😍', 'pc_input')">😍</span>
+          <span onclick="insertEmoji('😱', 'pc_input')">😱</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Place server-provided values into the DOM to avoid raw Jinja inside JS -->
+<div id="server-data" style="display:none" data-user-id="{{ user_id | default('') }}"></div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+const _serverDataEl = document.getElementById('server-data');
+let MY_USER_ID = null;
+if(_serverDataEl){
+  const raw = _serverDataEl.dataset.userId;
+  // treat empty string as no user
+  MY_USER_ID = raw === undefined || raw === '' ? null : (isNaN(raw) ? raw : Number(raw));
+}
+
+function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
+
+async function doSearch(){
+  const q = document.getElementById('pc_search').value.trim();
+  const box = document.getElementById('search_results');
+  box.innerHTML = '';
+  if(!q) return;
+  try{
+    const res = await fetch(`/api/personal/search?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    console.log('Search results:', data);
+    (data.results || []).forEach(u=>{
+      const profilePic = u.profile_pic || '/static/uploads/default-profile.png';
+      const node = el(`<div class="pc-list-item" data-user-id="${u.user_id}">
+        <div class="pc-list-left">
+          <img class="pc-avatar" src="${profilePic}" alt="">
+          <div class="pc-item-info">
+            <div class="pc-item-name">${esc(u.username)}</div>
+            <div class="pc-item-sub">${esc(u.email)}</div>
+          </div>
+        </div>
+        <button class="btn" onclick="openPersonal(this.parentElement.getAttribute('data-user-id'))">Chat</button>
+      </div>`);
+      box.appendChild(node);
+    });
+  }catch(e){
+    console.error('Search error:', e);
+    box.innerHTML = `<div class="muted">Search failed: ${e.message}</div>`;
+  }
+}
+
+async function loadRecent(){
+  const box = document.getElementById('recent_list');
+  box.innerHTML = 'Loading...';
+  try{
+    const res = await fetch('/api/personal/recent');
+    const data = await res.json();
+    box.innerHTML = '';
+    if(!data.results || data.results.length===0){
+      box.innerHTML = '<div class="muted">No recent chats</div>';
+      return;
+    }
+    data.results.forEach(c=>{
+      const otherName = c.username || 'Unknown';
+      const otherId = c.user_id;
+      const profilePic = c.profile_pic || '/static/uploads/default-profile.png';
+      const node = el(`<div class="pc-list-item" data-user-id="${otherId}" onclick="openPersonal(this.getAttribute('data-user-id'))">
+        <div class="pc-list-left">
+          <img class="pc-avatar" src="${profilePic}" alt="">
+          <div class="pc-item-info">
+            <div class="pc-item-name">${esc(otherName)}</div>
+            <div class="pc-item-sub">${esc(c.last_message_preview || '')}</div>
+          </div>
+        </div>
+        <div style="text-align:right; font-size:12px; color:#6a778e;">${c.last_at ? c.last_at : ''}</div>
+      </div>`);
+      box.appendChild(node);
+    });
+  }catch(e){
+    box.innerHTML = '<div class="muted">Failed to load recent</div>';
+  }
+}
+
+function openPersonal(otherId){
+  // Load chat inline instead of navigating
+  console.log('Opening personal chat with otherId:', otherId, 'type:', typeof otherId);
+  const idNum = typeof otherId === 'string' ? parseInt(otherId, 10) : otherId;
+  if(isNaN(idNum)){
+    console.error('Invalid user ID:', otherId);
+    alert('Invalid user ID');
+    return;
+  }
+  loadChatWith(idNum);
+}
+
+// Socket.IO chat logic (merged from personal_chat.html)
+const socket = io();
+let CHAT_ID = null;
+
+function esc(s){ const p=document.createElement('p'); p.appendChild(document.createTextNode(s||'')); return p.innerHTML; }
+function toLocal(ts){ const d = new Date((ts||'').replace(' ','T')); return isNaN(d)?'':d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+function scrollBottom(){ const box=document.getElementById('pc_messages'); box.scrollTop = box.scrollHeight; }
+
+// Render attachment element based on file extension: image/video/audio show inline, other files show filename link
+function renderAttachmentElement(fp, isMe){
+  if(!fp) return null;
+  console.log('renderAttachmentElement: fp=', fp);
+  const parts = fp.split('/');
+  const fname = parts[parts.length-1] || fp;
+  console.log('renderAttachmentElement: fname=', fname);
+  const idx = fname.lastIndexOf('.');
+  const ext = idx>-1 ? fname.slice(idx+1).toLowerCase() : '';
+  console.log('renderAttachmentElement: ext=', ext);
+  const imgExt = ['png','jpg','jpeg','gif','webp','bmp'];
+  const videoExt = ['mp4','webm','ogg'];
+  const audioExt = ['mp3','wav','ogg'];
+
+  if(imgExt.includes(ext)){
+    const img = document.createElement('img');
+    img.src = fp;
+    img.className = 'msg-attachment';
+    return img;
+  }
+
+  if(videoExt.includes(ext)){
+    const v = document.createElement('video');
+    v.src = fp;
+    v.controls = true;
+    v.className = 'msg-attachment-video';
+    return v;
+  }
+
+  if(audioExt.includes(ext)){
+    const a = document.createElement('audio');
+    a.src = fp;
+    a.controls = true;
+    a.className = 'msg-attachment-audio';
+    return a;
+  }
+
+  // Generic file: show filename as link (no explicit "Download Attachment" text)
+  const link = document.createElement('a');
+  link.href = fp;
+  link.target = '_blank';
+  link.className = `msg-attachment ${isMe ? 'me' : ''}`;
+  link.textContent = '📎 ' + fname;
+  return link;
+}
+
+function mkMessageRow(m){
+  // API returns messages with sender_id (number), sender_name (string)
+  const senderId = (typeof m.sender_id === 'number') ? m.sender_id : Number(m.sender_id);
+  const myIdNum = (MY_USER_ID === null) ? NaN : Number(MY_USER_ID);
+  const me = (MY_USER_ID !== null && !Number.isNaN(senderId) && !Number.isNaN(myIdNum) && senderId === myIdNum);
+  
+  const wrapper = document.createElement('div');
+  wrapper.className = `msg-row ${me ? 'me' : ''}`;
+
+  const bubble = document.createElement('div');
+  bubble.className = `msg-bubble ${me ? 'me' : 'other'}`;
+
+  const displayName = me ? 'You' : (m.sender_name || '');
+  let topHtml = `<div class="msg-meta">${esc(displayName)} • ${toLocal(m.created_at)}</div>`;
+  let contentHtml = '';
+  if (m.content) contentHtml += `<div class="msg-content">${esc(m.content)}</div>`;
+
+  bubble.innerHTML = topHtml + contentHtml;
+  wrapper.appendChild(bubble);
+  
+  // Add file attachment if present (render inline for images/videos/audio)
+  if(m.file_path){
+    const attachmentEl = renderAttachmentElement(m.file_path, me);
+    if(attachmentEl) bubble.appendChild(attachmentEl);
+  }
+
+  return wrapper;
+}
+
+async function loadChatWith(otherId){
+  const msgBox = document.getElementById('pc_messages');
+  msgBox.innerHTML = 'Loading messages...';
+  try{
+    const res = await fetch(`/api/personal/get_chat/${otherId}`);
+    const data = await res.json();
+    console.log('Chat data received:', data);
+    
+    if(data.error){
+      msgBox.innerHTML = `<div class="muted">Error: ${data.error}</div>`;
+      return;
+    }
+    
+    if(data.chat_id) CHAT_ID = data.chat_id;
+    console.log('Chat loaded with CHAT_ID:', CHAT_ID);
+    // top info: API returns { other: { user_id, username, email, profile_pic } }
+    const otherName = (data.other && data.other.username) || 'User';
+    document.getElementById('other_name').textContent = otherName;
+    // Always reset and update picture: hide by default, show only if profile_pic exists
+    const img = document.getElementById('other_pic');
+    img.style.display = 'none';
+    img.src = '';
+    if(data.other && data.other.profile_pic){
+      img.src = data.other.profile_pic; 
+      img.style.display = 'inline-block';
+    }
+    // clear & append messages
+    msgBox.innerHTML = '';
+    if(data.messages && data.messages.length > 0){
+      data.messages.forEach(m=>{
+        msgBox.appendChild(mkMessageRow(m));
+      });
+    } else {
+      msgBox.innerHTML = '<div class="muted">No messages yet</div>';
+    }
+    scrollBottom();
+    // join socket room
+    if(data.chat_id) {
+      CHAT_ID = data.chat_id;
+      socket.emit('join_private', { chat_id: CHAT_ID });
+    }
+  }catch(e){
+    console.error('Failed to load chat:', e);
+    msgBox.innerHTML = `<div class="muted">Failed to load chat: ${e.message}</div>`;
+  }
+}
+
+function sendPersonal(){
+  const input = document.getElementById('pc_input');
+  const text = input.value.trim();
+  console.log('sendPersonal called: CHAT_ID=', CHAT_ID, 'text=', text);
+  if(!CHAT_ID) { 
+    alert('Chat not loaded. Please select a person first.'); 
+    return; 
+  }
+  if(!text) return;
+  console.log('Emitting private_message with CHAT_ID:', CHAT_ID);
+  socket.emit('private_message', { chat_id: CHAT_ID, content: text });
+  input.value = '';
+}
+
+async function uploadFile(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  
+  if(!CHAT_ID){
+    alert('Please select a chat first');
+    return;
+  }
+  
+  console.log('Uploading file:', f.name, 'to chat:', CHAT_ID);
+  const fd = new FormData();
+  fd.append('file', f);
+  fd.append('chat_id', CHAT_ID);
+  
+  try{
+    const res = await fetch('/api/personal/upload', { method:'POST', body: fd });
+    const data = await res.json();
+    console.log('Upload response:', data);
+    
+    if(data && data.ok){
+      console.log('File uploaded successfully, emitting message with file_path:', data.file_path);
+      socket.emit('private_message', { chat_id: CHAT_ID, content: `Shared file: ${f.name}`, file_path: data.file_path });
+    } else {
+      alert('Upload failed: ' + (data.error || 'Unknown error'));
+    }
+  } catch(err){
+    console.error('Upload error:', err);
+    alert('Upload error: ' + err.message);
+  }
+  
+  // Reset file input
+  e.target.value = '';
+}
+
+// Socket listeners
+socket.on('private_new_message', (msg)=>{
+  console.log('Received private_new_message:', msg);
+  const box = document.getElementById('pc_messages');
+  if(box){
+    box.appendChild(mkMessageRow(msg));
+    scrollBottom();
+  }
+});
+
+// Emoji helper functions
+function toggleEmojiPicker(pickerId){
+  const picker = document.getElementById(pickerId);
+  picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+}
+
+function insertEmoji(emoji, inputId){
+  const input = document.getElementById(inputId);
+  input.value += emoji;
+  input.focus();
+  // Hide emoji picker
+  const pickers = document.querySelectorAll('[id$="_emoji_picker"]');
+  pickers.forEach(p => p.style.display = 'none');
+}
+
+loadRecent();
+</script>
+{% endblock %}
