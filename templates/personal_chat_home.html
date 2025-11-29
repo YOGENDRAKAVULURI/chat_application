@@ -10,7 +10,9 @@
   width: calc(100% - 12rem) !important;
   box-sizing: border-box;
   padding: 2.5rem;
+  margin-top: 50px;
 }
+
 
 /* Layout card */
 .pc-card {
@@ -147,6 +149,27 @@
   display: none; /* show only when src present via JS */
 }
 
+/* online/offline status */
+#other_status {
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+.status-online {
+  color: #16a34a;
+}
+
+.status-offline {
+  color: #6b7280;
+}
+
+/* typing indicator */
+.typing-indicator {
+  font-size: 0.85rem;
+  color: #6a778e;
+  padding-left: 4px;
+}
+
 /* messages area */
 .pc-messages {
   height: 60vh;
@@ -203,6 +226,12 @@
   margin-top: 8px;
 }
 
+.msg-bubble audio {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+}
+
 /* attachments link style */
 .msg-attachment {
   display: inline-block;
@@ -211,6 +240,27 @@
   color: #667eea;
 }
 .msg-attachment.me { color: #fff; }
+
+/* edit button / message actions */
+.msg-actions {
+  margin-top: 4px;
+  text-align: right;
+  font-size: 11px;
+}
+
+.msg-edit-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  font-size: 11px;
+  color: rgba(255,255,255,0.9);
+}
+
+.msg-row .msg-bubble.other .msg-edit-btn {
+  color: #4b5563;
+}
 
 /* input area */
 .pc-input-area {
@@ -241,7 +291,6 @@
 }
 .btn:hover { opacity: 0.95; }
 
-/* subtle secondary button */
 .btn.secondary {
   background: #eef2ff;
   color: #4c1d95;
@@ -282,7 +331,6 @@
 }
 
 @media (max-width: 768px) {
-  /* Use full width on small screens; account mobile bottom navbar */
   .content {
     margin-left: 0 !important;
     width: 100% !important;
@@ -317,24 +365,30 @@
 
   <!-- Right column: chat view -->
   <div class="pc-right">
-    <!-- top bar with other user info -->
+    <!-- top bar with other user info and clear chat -->
     <div class="pc-topbar">
       <div class="pc-topbar-left">
         <img id="other_pic" class="pc-other-pic" src="" alt="">
         <div>
           <div id="other_name">Select a person to chat</div>
-          <div id="other_status">offline</div>
+          <div id="other_status" class="status-offline">offline</div>
         </div>
       </div>
+      <div>
+        <button id="clear_chat_btn" class="btn secondary" onclick="clearChat()" disabled>Clear chat</button>
+      </div>
     </div>
+
+    <!-- typing indicator -->
+    <div id="typing_indicator" class="typing-indicator" style="display:none;"></div>
 
     <!-- messages area -->
     <div id="pc_messages" class="pc-messages"></div>
 
     <!-- input area: text + file + send + emoji -->
     <div id="input_area" class="pc-input-area">
-      <input id="pc_input" class="pc-input" placeholder="Type a message (emoji supported)" onkeydown="if(event.key==='Enter') sendPersonal()">
-      <input id="pc_file" type="file" onchange="uploadFile(event)">
+      <input id="pc_input" class="pc-input" placeholder="Type a message......" onkeydown="if(event.key==='Enter') sendPersonal()">
+      <input id="pc_file" type="file" onchange="uploadFile(event)" style="display:none;">
       <button class="btn" onclick="document.getElementById('pc_file').click()">Attach</button>
       <button class="btn" onclick="toggleEmojiPicker('pc_emoji_picker')">😀</button>
       <button class="btn" onclick="sendPersonal()">Send</button>
@@ -359,7 +413,7 @@
   </div>
 </div>
 
-<!-- Place server-provided values into the DOM to avoid raw Jinja inside JS -->
+<!-- server data -->
 <div id="server-data" style="display:none" data-user-id="{{ user_id | default('') }}"></div>
 
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
@@ -368,12 +422,135 @@ const _serverDataEl = document.getElementById('server-data');
 let MY_USER_ID = null;
 if(_serverDataEl){
   const raw = _serverDataEl.dataset.userId;
-  // treat empty string as no user
   MY_USER_ID = raw === undefined || raw === '' ? null : (isNaN(raw) ? raw : Number(raw));
 }
 
-function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
+let OTHER_USER_ID = null;
+let CHAT_ID = null;
+let typingTimeout = null;
 
+const socket = io();
+
+function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
+function esc(s){ const p=document.createElement('p'); p.appendChild(document.createTextNode(s||'')); return p.innerHTML; }
+function toLocal(ts){ const d = new Date((ts||'').replace(' ','T')); return isNaN(d)?'':d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+function scrollBottom(){ const box=document.getElementById('pc_messages'); if(box) box.scrollTop = box.scrollHeight; }
+
+function renderAttachmentElement(fp, isMe){
+  if(!fp) return null;
+  const parts = fp.split('/');
+  const fname = parts[parts.length-1] || fp;
+  const idx = fname.lastIndexOf('.');
+  const ext = idx>-1 ? fname.slice(idx+1).toLowerCase() : '';
+  const imgExt = ['png','jpg','jpeg','gif','webp','bmp'];
+  const videoExt = ['mp4','webm','ogg'];
+  const audioExt = ['mp3','wav','ogg'];
+
+  if(imgExt.includes(ext)){
+    const img = document.createElement('img');
+    img.src = fp;
+    img.className = 'msg-attachment';
+    return img;
+  }
+  if(videoExt.includes(ext)){
+    const v = document.createElement('video');
+    v.src = fp;
+    v.controls = true;
+    v.className = 'msg-attachment-video';
+    return v;
+  }
+  if(audioExt.includes(ext)){
+    const a = document.createElement('audio');
+    a.src = fp;
+    a.controls = true;
+    a.className = 'msg-attachment-audio';
+    return a;
+  }
+
+  const link = document.createElement('a');
+  link.href = fp;
+  link.target = '_blank';
+  link.className = `msg-attachment ${isMe ? 'me' : ''}`;
+  link.textContent = '📎 ' + fname;
+  return link;
+}
+
+function mkMessageRow(m){
+  const senderId = (typeof m.sender_id === 'number') ? m.sender_id : Number(m.sender_id);
+  const myIdNum = (MY_USER_ID === null) ? NaN : Number(MY_USER_ID);
+  const me = (MY_USER_ID !== null && !Number.isNaN(senderId) && !Number.isNaN(myIdNum) && senderId === myIdNum);
+
+  const wrapper = document.createElement('div');
+  wrapper.className = `msg-row ${me ? 'me' : ''}`;
+  wrapper.dataset.msgId = m.id;
+
+  const bubble = document.createElement('div');
+  bubble.className = `msg-bubble ${me ? 'me' : 'other'}`;
+
+  const displayName = me ? 'You' : (m.sender_name || '');
+  let topHtml = `<div class="msg-meta">${esc(displayName)} • ${toLocal(m.created_at)}</div>`;
+  let contentHtml = '';
+  if (m.content) contentHtml += `<div class="msg-content">${esc(m.content)}</div>`;
+
+  bubble.innerHTML = topHtml + contentHtml;
+  wrapper.appendChild(bubble);
+
+  if(m.file_path){
+    const attachmentEl = renderAttachmentElement(m.file_path, me);
+    if(attachmentEl) bubble.appendChild(attachmentEl);
+  }
+
+  if(me){
+    const actions = document.createElement('div');
+    actions.className = 'msg-actions';
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'msg-edit-btn';
+    editBtn.textContent = 'Edit';
+    editBtn.onclick = () => {
+      const contentEl = bubble.querySelector('.msg-content');
+      const currentText = contentEl ? contentEl.textContent : '';
+      const newText = prompt('Edit your message:', currentText);
+      if (newText === null) return;
+      const trimmed = newText.trim();
+      if (!trimmed) return;
+      socket.emit('edit_private_message', {
+        chat_id: CHAT_ID,
+        message_id: m.id,
+        content: trimmed
+      });
+    };
+    actions.appendChild(editBtn);
+    bubble.appendChild(actions);
+  }
+
+  return wrapper;
+}
+
+/* STATUS / PRESENCE */
+function setStatus(status) {
+  const el = document.getElementById('other_status');
+  if (!el) return;
+  el.textContent = status;
+  el.classList.remove('status-online', 'status-offline');
+  if (status === 'online') el.classList.add('status-online');
+  else el.classList.add('status-offline');
+}
+
+async function refreshPresence() {
+  if (!OTHER_USER_ID) return;
+  try {
+    const res = await fetch(`/api/personal/status/${OTHER_USER_ID}`);
+    const data = await res.json();
+    if (data && typeof data.online === 'boolean') {
+      setStatus(data.online ? 'online' : 'offline');
+    }
+  } catch (e) {
+    console.error('Presence check failed', e);
+  }
+}
+
+/* SEARCH / RECENT */
 async function doSearch(){
   const q = document.getElementById('pc_search').value.trim();
   const box = document.getElementById('search_results');
@@ -382,7 +559,6 @@ async function doSearch(){
   try{
     const res = await fetch(`/api/personal/search?q=${encodeURIComponent(q)}`);
     const data = await res.json();
-    console.log('Search results:', data);
     (data.results || []).forEach(u=>{
       const profilePic = u.profile_pic || '/static/uploads/default-profile.png';
       const node = el(`<div class="pc-list-item" data-user-id="${u.user_id}">
@@ -436,119 +612,32 @@ async function loadRecent(){
 }
 
 function openPersonal(otherId){
-  // Load chat inline instead of navigating
-  console.log('Opening personal chat with otherId:', otherId, 'type:', typeof otherId);
   const idNum = typeof otherId === 'string' ? parseInt(otherId, 10) : otherId;
   if(isNaN(idNum)){
-    console.error('Invalid user ID:', otherId);
     alert('Invalid user ID');
     return;
   }
   loadChatWith(idNum);
 }
 
-// Socket.IO chat logic (merged from personal_chat.html)
-const socket = io();
-let CHAT_ID = null;
-
-function esc(s){ const p=document.createElement('p'); p.appendChild(document.createTextNode(s||'')); return p.innerHTML; }
-function toLocal(ts){ const d = new Date((ts||'').replace(' ','T')); return isNaN(d)?'':d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
-function scrollBottom(){ const box=document.getElementById('pc_messages'); box.scrollTop = box.scrollHeight; }
-
-// Render attachment element based on file extension: image/video/audio show inline, other files show filename link
-function renderAttachmentElement(fp, isMe){
-  if(!fp) return null;
-  console.log('renderAttachmentElement: fp=', fp);
-  const parts = fp.split('/');
-  const fname = parts[parts.length-1] || fp;
-  console.log('renderAttachmentElement: fname=', fname);
-  const idx = fname.lastIndexOf('.');
-  const ext = idx>-1 ? fname.slice(idx+1).toLowerCase() : '';
-  console.log('renderAttachmentElement: ext=', ext);
-  const imgExt = ['png','jpg','jpeg','gif','webp','bmp'];
-  const videoExt = ['mp4','webm','ogg'];
-  const audioExt = ['mp3','wav','ogg'];
-
-  if(imgExt.includes(ext)){
-    const img = document.createElement('img');
-    img.src = fp;
-    img.className = 'msg-attachment';
-    return img;
-  }
-
-  if(videoExt.includes(ext)){
-    const v = document.createElement('video');
-    v.src = fp;
-    v.controls = true;
-    v.className = 'msg-attachment-video';
-    return v;
-  }
-
-  if(audioExt.includes(ext)){
-    const a = document.createElement('audio');
-    a.src = fp;
-    a.controls = true;
-    a.className = 'msg-attachment-audio';
-    return a;
-  }
-
-  // Generic file: show filename as link (no explicit "Download Attachment" text)
-  const link = document.createElement('a');
-  link.href = fp;
-  link.target = '_blank';
-  link.className = `msg-attachment ${isMe ? 'me' : ''}`;
-  link.textContent = '📎 ' + fname;
-  return link;
-}
-
-function mkMessageRow(m){
-  // API returns messages with sender_id (number), sender_name (string)
-  const senderId = (typeof m.sender_id === 'number') ? m.sender_id : Number(m.sender_id);
-  const myIdNum = (MY_USER_ID === null) ? NaN : Number(MY_USER_ID);
-  const me = (MY_USER_ID !== null && !Number.isNaN(senderId) && !Number.isNaN(myIdNum) && senderId === myIdNum);
-  
-  const wrapper = document.createElement('div');
-  wrapper.className = `msg-row ${me ? 'me' : ''}`;
-
-  const bubble = document.createElement('div');
-  bubble.className = `msg-bubble ${me ? 'me' : 'other'}`;
-
-  const displayName = me ? 'You' : (m.sender_name || '');
-  let topHtml = `<div class="msg-meta">${esc(displayName)} • ${toLocal(m.created_at)}</div>`;
-  let contentHtml = '';
-  if (m.content) contentHtml += `<div class="msg-content">${esc(m.content)}</div>`;
-
-  bubble.innerHTML = topHtml + contentHtml;
-  wrapper.appendChild(bubble);
-  
-  // Add file attachment if present (render inline for images/videos/audio)
-  if(m.file_path){
-    const attachmentEl = renderAttachmentElement(m.file_path, me);
-    if(attachmentEl) bubble.appendChild(attachmentEl);
-  }
-
-  return wrapper;
-}
-
+/* LOAD CHAT */
 async function loadChatWith(otherId){
   const msgBox = document.getElementById('pc_messages');
   msgBox.innerHTML = 'Loading messages...';
   try{
     const res = await fetch(`/api/personal/get_chat/${otherId}`);
     const data = await res.json();
-    console.log('Chat data received:', data);
-    
+
     if(data.error){
       msgBox.innerHTML = `<div class="muted">Error: ${data.error}</div>`;
       return;
     }
-    
+
     if(data.chat_id) CHAT_ID = data.chat_id;
-    console.log('Chat loaded with CHAT_ID:', CHAT_ID);
-    // top info: API returns { other: { user_id, username, email, profile_pic } }
+
     const otherName = (data.other && data.other.username) || 'User';
     document.getElementById('other_name').textContent = otherName;
-    // Always reset and update picture: hide by default, show only if profile_pic exists
+
     const img = document.getElementById('other_pic');
     img.style.display = 'none';
     img.src = '';
@@ -556,7 +645,12 @@ async function loadChatWith(otherId){
       img.src = data.other.profile_pic; 
       img.style.display = 'inline-block';
     }
-    // clear & append messages
+
+    OTHER_USER_ID = data.other ? data.other.user_id : null;
+
+    const clearBtn = document.getElementById('clear_chat_btn');
+    if (clearBtn) clearBtn.disabled = !CHAT_ID;
+
     msgBox.innerHTML = '';
     if(data.messages && data.messages.length > 0){
       data.messages.forEach(m=>{
@@ -566,10 +660,16 @@ async function loadChatWith(otherId){
       msgBox.innerHTML = '<div class="muted">No messages yet</div>';
     }
     scrollBottom();
-    // join socket room
+
     if(data.chat_id) {
       CHAT_ID = data.chat_id;
       socket.emit('join_private', { chat_id: CHAT_ID });
+    }
+
+    if (OTHER_USER_ID) {
+      socket.emit('watch_user', { user_id: OTHER_USER_ID });
+      setStatus('checking...');
+      refreshPresence();
     }
   }catch(e){
     console.error('Failed to load chat:', e);
@@ -577,42 +677,43 @@ async function loadChatWith(otherId){
   }
 }
 
+/* SEND MESSAGE */
 function sendPersonal(){
   const input = document.getElementById('pc_input');
   const text = input.value.trim();
-  console.log('sendPersonal called: CHAT_ID=', CHAT_ID, 'text=', text);
   if(!CHAT_ID) { 
     alert('Chat not loaded. Please select a person first.'); 
     return; 
   }
   if(!text) return;
-  console.log('Emitting private_message with CHAT_ID:', CHAT_ID);
   socket.emit('private_message', { chat_id: CHAT_ID, content: text });
   input.value = '';
 }
 
+/* FILE UPLOAD */
 async function uploadFile(e){
   const f = e.target.files[0];
   if(!f) return;
-  
   if(!CHAT_ID){
     alert('Please select a chat first');
+    e.target.value = '';
     return;
   }
-  
-  console.log('Uploading file:', f.name, 'to chat:', CHAT_ID);
+
   const fd = new FormData();
   fd.append('file', f);
   fd.append('chat_id', CHAT_ID);
-  
+
   try{
     const res = await fetch('/api/personal/upload', { method:'POST', body: fd });
     const data = await res.json();
-    console.log('Upload response:', data);
-    
+
     if(data && data.ok){
-      console.log('File uploaded successfully, emitting message with file_path:', data.file_path);
-      socket.emit('private_message', { chat_id: CHAT_ID, content: `Shared file: ${f.name}`, file_path: data.file_path });
+      socket.emit('private_message', { 
+        chat_id: CHAT_ID, 
+        content: `Shared file: ${f.name}`, 
+        file_path: data.file_path 
+      });
     } else {
       alert('Upload failed: ' + (data.error || 'Unknown error'));
     }
@@ -620,22 +721,39 @@ async function uploadFile(e){
     console.error('Upload error:', err);
     alert('Upload error: ' + err.message);
   }
-  
-  // Reset file input
   e.target.value = '';
 }
 
-// Socket listeners
-socket.on('private_new_message', (msg)=>{
-  console.log('Received private_new_message:', msg);
-  const box = document.getElementById('pc_messages');
-  if(box){
-    box.appendChild(mkMessageRow(msg));
-    scrollBottom();
-  }
-});
+/* CLEAR CHAT */
+async function clearChat() {
+  if (!CHAT_ID) return;
+  if (!confirm('Clear this chat for both participants? This cannot be undone.')) return;
 
-// Emoji helper functions
+  try {
+    const res = await fetch(`/api/personal/clear_chat/${CHAT_ID}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) {
+      const box = document.getElementById('pc_messages');
+      box.innerHTML = '<div class="muted">Chat cleared</div>';
+    } else {
+      alert('Could not clear chat: ' + (data.error || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('Error clearing chat: ' + e.message);
+  }
+}
+
+/* TYPING */
+function handleTyping(){
+  if (!CHAT_ID) return;
+  socket.emit('private_typing', { chat_id: CHAT_ID });
+  if (typingTimeout) clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(()=>{
+    socket.emit('private_stop_typing', { chat_id: CHAT_ID });
+  }, 1000);
+}
+
+/* EMOJI */
 function toggleEmojiPicker(pickerId){
   const picker = document.getElementById(pickerId);
   picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
@@ -645,11 +763,60 @@ function insertEmoji(emoji, inputId){
   const input = document.getElementById(inputId);
   input.value += emoji;
   input.focus();
-  // Hide emoji picker
   const pickers = document.querySelectorAll('[id$="_emoji_picker"]');
   pickers.forEach(p => p.style.display = 'none');
 }
 
-loadRecent();
+/* SOCKET LISTENERS */
+socket.on('private_new_message', (msg)=>{
+  const box = document.getElementById('pc_messages');
+  if(box){
+    box.appendChild(mkMessageRow(msg));
+    scrollBottom();
+  }
+});
+
+socket.on('private_message_edited', (msg)=>{
+  const box = document.getElementById('pc_messages');
+  if (!box) return;
+  const rows = box.querySelectorAll('.msg-row');
+  rows.forEach(row => {
+    const id = Number(row.dataset.msgId);
+    if (id === msg.id) {
+      const newRow = mkMessageRow(msg);
+      box.replaceChild(newRow, row);
+    }
+  });
+});
+
+socket.on('private_typing', (data) => {
+  if (data.chat_id !== CHAT_ID) return;
+  const ind = document.getElementById('typing_indicator');
+  if (!ind) return;
+  ind.style.display = 'block';
+  ind.textContent = `${data.username || 'Someone'} is typing...`;
+});
+
+socket.on('private_stop_typing', (data) => {
+  if (data.chat_id !== CHAT_ID) return;
+  const ind = document.getElementById('typing_indicator');
+  if (!ind) return;
+  ind.style.display = 'none';
+});
+
+socket.on('presence', (data) => {
+  if (!OTHER_USER_ID) return;
+  if (Number(data.user_id) !== Number(OTHER_USER_ID)) return;
+  if (data.status === 'online' || data.status === 'offline') {
+    setStatus(data.status);
+  }
+});
+
+/* INIT */
+document.addEventListener('DOMContentLoaded', () => {
+  const inputEl = document.getElementById('pc_input');
+  if (inputEl) inputEl.addEventListener('input', handleTyping);
+  loadRecent();
+});
 </script>
 {% endblock %}

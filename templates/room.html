@@ -2,52 +2,54 @@
 
 {% block content %}
 
-<div class="card row" style="justify-content:space-between;">
+<div class="card row" style="justify-content:space-between; align-items:center;">
   <div>
     <h2 id="gname" style="margin:0;">Group</h2>
     <div id="members" class="muted"></div>
+    <div id="online_list" class="muted" style="margin-top:4px; font-size:0.9rem;">Online: -</div>
   </div>
-  <br>
-  <a class="btn" href="{{ url_for('room_home') }}">Back</a>
+  <div>
+    <a class="btn" href="{{ url_for('room_home') }}">Back</a>
+    <button class="btn danger" onclick="leaveGroup()" style="margin-left:6px;">Leave group</button>
+  </div>
 </div>
 
-  <div class="card">
-    <div id="msgs" class="messages"></div>
-    
-    <!-- Typing indicator -->
-    <div id="typing_indicator" style="display:none; padding:8px 12px; font-size:12px; color:#999; font-style:italic;">
-      <span id="typing_user"></span> is typing...
-    </div>
+<div class="card">
+  <div id="msgs" class="messages"></div>
+  
+  <!-- Typing indicator -->
+  <div id="typing_indicator" style="display:none; padding:8px 12px; font-size:12px; color:#999; font-style:italic;">
+    <span id="typing_user"></span> is typing...
+  </div>
 
-    <div class="row input-row" style="margin-top:12px; position:relative;">
-      <input id="msg" class="input" placeholder="Type a message… (emoji supported)"
-             onkeydown="if(event.key==='Enter')sendMessage()" oninput="notifyTyping()"/>
-      <input id="file_input" type="file" style="display:none" onchange="uploadGroupFile(event)">
-      <button class="btn" onclick="toggleEmojiPicker('group_emoji_picker')">😀</button>
-      <button class="btn" onclick="document.getElementById('file_input').click()">📎</button>
-      <button class="btn" onclick="sendMessage()">Send</button>
-      <!-- Emoji picker dropdown for group -->
-      <div id="group_emoji_picker" style="display:none; position:absolute; bottom:50px; right:0; background:#fff; border:1px solid #ddd; border-radius:8px; padding:10px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:1000;">
-        <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:5px; width:200px;">
-          <span onclick="insertEmoji('😀', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">😀</span>
-          <span onclick="insertEmoji('😂', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">😂</span>
-          <span onclick="insertEmoji('❤️', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">❤️</span>
-          <span onclick="insertEmoji('👍', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">👍</span>
-          <span onclick="insertEmoji('🎉', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">🎉</span>
-          <span onclick="insertEmoji('🔥', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">🔥</span>
-          <span onclick="insertEmoji('😎', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">😎</span>
-          <span onclick="insertEmoji('👀', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">👀</span>
-          <span onclick="insertEmoji('💯', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">💯</span>
-          <span onclick="insertEmoji('🤔', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">🤔</span>
-          <span onclick="insertEmoji('😍', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">😍</span>
-          <span onclick="insertEmoji('😱', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">😱</span>
-        </div>
+  <div class="row input-row" style="margin-top:12px; position:relative;">
+    <input id="msg" class="input" placeholder="Type a message....."
+           onkeydown="if(event.key==='Enter')sendMessage()" oninput="notifyTyping()"/>
+    <input id="file_input" type="file" style="display:none" onchange="uploadGroupFile(event)">
+    <button class="btn" onclick="toggleEmojiPicker('group_emoji_picker')">😀</button>
+    <button class="btn" onclick="document.getElementById('file_input').click()">📎</button>
+    <button class="btn" onclick="sendMessage()">Send</button>
+    <!-- Emoji picker dropdown for group -->
+    <div id="group_emoji_picker" style="display:none; position:absolute; bottom:50px; right:0; background:#fff; border:1px solid #ddd; border-radius:8px; padding:10px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:1000;">
+      <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:5px; width:200px;">
+        <span onclick="insertEmoji('😀', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">😀</span>
+        <span onclick="insertEmoji('😂', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">😂</span>
+        <span onclick="insertEmoji('❤️', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">❤️</span>
+        <span onclick="insertEmoji('👍', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">👍</span>
+        <span onclick="insertEmoji('🎉', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">🎉</span>
+        <span onclick="insertEmoji('🔥', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">🔥</span>
+        <span onclick="insertEmoji('😎', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">😎</span>
+        <span onclick="insertEmoji('👀', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">👀</span>
+        <span onclick="insertEmoji('💯', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">💯</span>
+        <span onclick="insertEmoji('🤔', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">🤔</span>
+        <span onclick="insertEmoji('😍', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">😍</span>
+        <span onclick="insertEmoji('😱', 'msg')" style="cursor:pointer; font-size:20px; text-align:center;">😱</span>
       </div>
     </div>
   </div>
+</div>
 
 <style>
-/* chat layout */
 .messages {
   height: 65vh;
   overflow:auto;
@@ -59,11 +61,11 @@
   gap:10px;
 }
 
-/* wrapper for each message row */
 .msg-row {
   display:flex;
   margin:6px 0;
 }
+
 .input{
   padding:12px 14px;
   border:1.5px solid #e2e8f0;
@@ -72,21 +74,6 @@
   width:75%;
 }
 
-/* left = other users, right = me */
-.msg-row.left { justify-content:flex-start; }
-.msg-row.right { justify-content:flex-end; }
-
-/* bubble */
-.msg-bubble {
-  display:inline-block;
-  padding:10px 14px;
-  border-radius:14px;
-  max-width:75%;
-  word-wrap:break-word;
-  box-shadow:0 2px 8px rgba(0,0,0,.05);
-  background:#ffffff;
-  color:#222;
-}
 .btn{
   padding:10px 16px;
   margin-left:8px;
@@ -97,25 +84,65 @@
   cursor:pointer;
   transition:background 0.3s ease;
 }
-/* my bubble style */
-.msg-row.right .msg-bubble {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
+.btn:hover{
+  background:#5a67d8;
 }
 
-/* small meta line (name + time) */
+.btn.danger{
+  background:#dc2626;
+}
+.btn.danger:hover{
+  background:#b91c1c;
+}
+
+/* bubble container */
+.msg-bubble {
+  display:inline-block;
+  padding:10px 14px;
+  border-radius:14px;
+  max-width:75%;
+  word-wrap:break-word;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+  background:#ffffff;
+  color:#222;
+}
+
 .msg-meta {
   font-size:12px;
   color:rgba(0,0,0,0.55);
   margin-bottom:6px;
 }
 
-/* time on right bubble */
-.msg-row.right .msg-meta {
-  color: rgba(255,255,255,0.85);
+.msg-content {
+  white-space:pre-wrap;
 }
 
-/* small system text (joined / errors) */
+/* actions (edit button) */
+.msg-actions {
+  margin-top:4px;
+  text-align:right;
+  font-size:11px;
+}
+
+.msg-edit-btn {
+  border:none;
+  background:transparent;
+  cursor:pointer;
+  text-decoration:underline;
+  padding:0;
+  font-size:11px;
+  color:#e5e7eb;
+}
+
+.msg-row.me .msg-edit-btn {
+  color:#e5e7eb;
+}
+
+.msg-row.other .msg-edit-btn {
+  color:#4b5563;
+}
+
+/* system text */
 .system {
   text-align:center;
   opacity:0.7;
@@ -126,15 +153,15 @@
 
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
-// Inject user_id from template into hidden data element
+// Inject user_id from template
 const _tempEl = document.createElement('div');
 _tempEl.setAttribute('data-user-id', '{{ user_id|default("") }}');
 let MY_USER_ID = null;
 const rawId = _tempEl.getAttribute('data-user-id');
 MY_USER_ID = rawId === undefined || rawId === '' ? null : (isNaN(rawId) ? rawId : Number(rawId));
+
 const socket = io();
 
-// helpers
 function escapeHtml(s){ const p=document.createElement('p'); p.appendChild(document.createTextNode(s||'')); return p.innerHTML; }
 function qs(name){ return new URLSearchParams(location.search).get(name); }
 function toLocal(ts){ const d = new Date((ts||'').replace(' ','T')); return isNaN(d)?'':d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
@@ -145,39 +172,35 @@ if(!groupId){
   console.warn('Missing gid in URL (use /room?gid=123)');
 }
 
-// Append a system message (centered)
+let groupMembers = [];
+let typingTimeout;
+
+// SYSTEM MESSAGE
 function appendSystem(text){
   const box = document.getElementById('msgs');
   if(!box) return;
   const row = document.createElement('div');
-  row.style.textAlign = 'center';
-  row.style.opacity = '0.75';
-  row.style.margin = '6px 0';
+  row.className = 'system';
   row.textContent = text;
   box.appendChild(row);
   scrollBottom();
 }
 
-// Append a single message with correct left/right alignment
-function appendMessage(m){
+// build row DOM for a single message
+function createMessageRow(m){
   const box = document.getElementById('msgs');
-  if(!box) return;
-
-  // Ensure sender_id is a number if possible
   const senderId = (typeof m.sender_id === 'number') ? m.sender_id : Number(m.sender_id);
   const me = (MY_USER_ID !== null && !Number.isNaN(senderId) && senderId === MY_USER_ID);
 
   const wrap = document.createElement('div');
+  wrap.className = 'msg-row ' + (me ? 'me' : 'other');
+  wrap.dataset.msgId = m.id;
+
   wrap.style.display = 'flex';
   wrap.style.justifyContent = me ? 'flex-end' : 'flex-start';
-  wrap.style.margin = '6px 0';
 
   const bubble = document.createElement('div');
-  bubble.style.padding = '10px 14px';
-  bubble.style.borderRadius = '14px';
-  bubble.style.maxWidth = '72%';
-  bubble.style.wordBreak = 'break-word';
-  bubble.style.boxShadow = '0 2px 6px rgba(0,0,0,0.08)';
+  bubble.className = 'msg-bubble';
   bubble.style.lineHeight = '1.3';
 
   if (me) {
@@ -191,28 +214,24 @@ function appendMessage(m){
   }
 
   const meta = document.createElement('div');
-  meta.style.fontSize = '12px';
-  meta.style.opacity = '0.75';
-  meta.style.marginBottom = '6px';
+  meta.className = 'msg-meta';
   meta.textContent = `${me ? 'You' : (m.sender_name || 'Someone')} • ${toLocal(m.created_at)}`;
 
   const content = document.createElement('div');
+  content.className = 'msg-content';
   content.innerHTML = escapeHtml(m.content || '');
 
   bubble.appendChild(meta);
   bubble.appendChild(content);
-  
-  // Add file attachment if present (render inline for images/videos/audio)
+
+  // attachment
   if(m.file_path){
     const attachmentEl = (function(fp, isMe){
-      console.log('appendMessage: attachment fp=', fp);
       if(!fp) return null;
       const parts = fp.split('/');
       const fname = parts[parts.length-1] || fp;
-      console.log('appendMessage: derived fname=', fname);
       const idx = fname.lastIndexOf('.');
       const ext = idx>-1 ? fname.slice(idx+1).toLowerCase() : '';
-      console.log('appendMessage: ext=', ext);
       const imgExt = ['png','jpg','jpeg','gif','webp','bmp'];
       const videoExt = ['mp4','webm','ogg'];
       const audioExt = ['mp3','wav','ogg'];
@@ -260,25 +279,90 @@ function appendMessage(m){
     })(m.file_path, me);
     if(attachmentEl) bubble.appendChild(attachmentEl);
   }
-  
+
+  // edit button for own messages
+  if (me) {
+    const actions = document.createElement('div');
+    actions.className = 'msg-actions';
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'msg-edit-btn';
+    editBtn.textContent = 'Edit';
+    editBtn.onclick = () => {
+      const currentText = m.content || '';
+      const newText = prompt('Edit your message:', currentText);
+      if (newText === null) return;
+      const trimmed = newText.trim();
+      if (!trimmed) return;
+      socket.emit('edit_group_message', {
+        group_id: groupId,
+        message_id: m.id,
+        content: trimmed
+      });
+    };
+    actions.appendChild(editBtn);
+    bubble.appendChild(actions);
+  }
+
   wrap.appendChild(bubble);
-  box.appendChild(wrap);
+  return wrap;
+}
+
+// append message (for initial load + new messages)
+function appendMessage(m){
+  const box = document.getElementById('msgs');
+  if(!box) return;
+  const row = createMessageRow(m);
+  box.appendChild(row);
   scrollBottom();
 }
 
-// Socket + initial load
+// refresh "who is online" in this group
+async function refreshOnlineMembers(){
+  if(!groupId) return;
+  const el = document.getElementById('online_list');
+  if(!el) return;
+  try{
+    const res = await fetch(`/api/groups/${groupId}/online`);
+    const data = await res.json();
+    if(data.error){
+      el.textContent = 'Online: -';
+      return;
+    }
+    const online = data.online || [];
+    if(online.length === 0){
+      el.textContent = 'Online: none';
+      return;
+    }
+    const names = online.map(u => u.username);
+    el.textContent = 'Online: ' + names.join(', ');
+  }catch(e){
+    console.error('Failed to load online members', e);
+    el.textContent = 'Online: -';
+  }
+}
+
+// SOCKET + INITIAL LOAD
 socket.on('connect', async () => {
   if(!groupId) return;
   try {
     const r = await fetch(`/api/groups/${groupId}`);
     const data = await r.json();
     if(data.error){ appendSystem(data.error); return; }
+
     document.getElementById('gname').textContent = data.group.name;
-    document.getElementById('members').textContent = (data.members || []).map(m=>m.username).join(', ');
+    groupMembers = data.members || [];
+    document.getElementById('members').textContent = groupMembers.map(m=>m.username).join(', ');
+
     (data.messages || []).forEach(appendMessage);
 
     socket.emit('join_group', { group_id: groupId });
     socket.emit('mark_read', { group_id: groupId });
+
+    // first presence load
+    refreshOnlineMembers();
+    // poll every 10 seconds
+    setInterval(refreshOnlineMembers, 10000);
   } catch(err){
     console.error('Failed to load group:', err);
     appendSystem('Failed to load messages');
@@ -290,28 +374,33 @@ socket.on('new_message', (msg) => {
   socket.emit('mark_read', { group_id: groupId });
 });
 
+socket.on('group_message_edited', (msg) => {
+  const box = document.getElementById('msgs');
+  if(!box) return;
+  const rows = box.querySelectorAll('.msg-row');
+  rows.forEach(row => {
+    if(Number(row.dataset.msgId) === msg.id){
+      const newRow = createMessageRow(msg);
+      box.replaceChild(newRow, row);
+    }
+  });
+});
+
 socket.on('system', (data) => appendSystem(data.message));
 
-// Sending messages
+// SEND MESSAGE
 function sendMessage(){
   const input = document.getElementById('msg');
   if(!input) return;
   const content = (input.value || '').trim();
-  if(!content){
-    console.warn('Group send blocked: empty message');
-    // Provide a gentle hint during testing
-    // alert('Please type a message before sending');
-    return;
-  }
-  console.log('Sending group message', { group_id: groupId, content });
+  if(!content) return;
   socket.emit('send_message', { group_id: groupId, content });
   input.value = '';
-  // Hide emoji picker
   const picker = document.getElementById('group_emoji_picker');
   if(picker) picker.style.display = 'none';
 }
 
-// File upload for group
+// FILE UPLOAD
 async function uploadGroupFile(e){
   const f = e.target.files[0];
   if(!f) return;
@@ -322,7 +411,6 @@ async function uploadGroupFile(e){
     const res = await fetch('/api/group/upload', { method:'POST', body: fd });
     const data = await res.json();
     if(data && data.ok){
-      console.log('Group file uploaded:', data);
       socket.emit('send_message', { group_id: groupId, content: `Shared file: ${f.name}`, file_path: data.file_path });
     } else {
       alert('Upload failed: ' + (data.error || 'Unknown error'));
@@ -330,11 +418,28 @@ async function uploadGroupFile(e){
   } catch(err){
     alert('Upload error: ' + err.message);
   }
-  // Reset file input
   e.target.value = '';
 }
 
-// Emoji helper functions
+// LEAVE GROUP
+async function leaveGroup(){
+  if(!groupId) return;
+  if(!confirm('Leave this group? You will stop receiving messages from it.')) return;
+  try{
+    const res = await fetch(`/api/groups/${groupId}/leave`, { method:'POST' });
+    const data = await res.json();
+    if(data.ok){
+      socket.emit('leave_group', { group_id: groupId });
+      window.location = "{{ url_for('room_home') }}";
+    }else{
+      alert('Could not leave group: ' + (data.error || 'Unknown error'));
+    }
+  }catch(e){
+    alert('Error leaving group: ' + e.message);
+  }
+}
+
+// EMOJI
 function toggleEmojiPicker(pickerId){
   const picker = document.getElementById(pickerId);
   picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
@@ -344,13 +449,11 @@ function insertEmoji(emoji, inputId){
   const input = document.getElementById(inputId);
   input.value += emoji;
   input.focus();
-  // Hide emoji picker
   const pickers = document.querySelectorAll('[id$="_emoji_picker"]');
   pickers.forEach(p => p.style.display = 'none');
 }
 
-// Typing indicator
-let typingTimeout;
+// TYPING INDICATOR
 function notifyTyping(){
   socket.emit('typing', { group_id: groupId });
   clearTimeout(typingTimeout);
@@ -362,7 +465,7 @@ function notifyTyping(){
 socket.on('user_typing', (data) => {
   const indicator = document.getElementById('typing_indicator');
   const typingUser = document.getElementById('typing_user');
-  if(indicator){
+  if(indicator && typingUser){
     typingUser.textContent = data.username || 'Someone';
     indicator.style.display = 'block';
   }
@@ -373,6 +476,5 @@ socket.on('user_stop_typing', () => {
   if(indicator) indicator.style.display = 'none';
 });
 </script>
-
 
 {% endblock %}

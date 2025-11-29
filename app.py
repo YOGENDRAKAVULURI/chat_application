@@ -1,9 +1,6 @@
 import bcrypt
 from datetime import datetime
-from flask import (
-    Flask, flash, render_template, redirect, url_for,
-    request, session, jsonify
-)
+from flask import (Flask, flash, render_template, redirect, url_for,request, session, jsonify)
 import os
 import uuid
 from werkzeug.utils import secure_filename
@@ -14,6 +11,7 @@ import mysql.connector
 from cmail import send_email       # you said you have these
 from otp import userotp
 from stoken import generate_token, verify_token
+from urllib.parse import quote_plus  # add at the top if not present
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'apple'  # change for production
@@ -24,6 +22,7 @@ app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 ALLOWED_IMAGE_EXTS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+online_users = set()
 
 def allowed_image(filename: str) -> bool:
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTS
@@ -123,6 +122,79 @@ def register():
             db.close()
     return render_template('registration.html')
 
+@app.route('/otpverify/<signed_userdata>', methods=['GET', 'POST'])
+def otpverify(signed_userdata):
+    if request.method == 'POST':
+        user_otp = ''.join([request.form.get(f'otp{i}') for i in range(1, 7)])
+        try:
+            de_data = verify_token(data=signed_userdata)
+        except Exception:
+            flash('could not verify otp', 'otpverify')
+            return redirect(url_for('otpverify', signed_userdata=signed_userdata))
+
+        if user_otp != de_data['otp']:
+            flash('given otp was wrong', 'otpverify')
+            return redirect(url_for('otpverify', signed_userdata=signed_userdata))
+
+        # Store user
+        db = get_db()
+        cur = db.cursor(buffered=True)
+        try:
+            bytes_password = de_data['password'].encode('utf-8')
+            hash_password = bcrypt.hashpw(bytes_password, bcrypt.gensalt()).decode('utf-8')
+            cur.execute(
+                "INSERT INTO userdata (username, email, password) VALUES (%s, %s, %s)",
+                (de_data['username'], de_data['email'], hash_password)
+            )
+            db.commit()
+            flash('successfully created account, please login', 'registration')
+            return redirect(url_for('home'))
+        except Exception:
+            db.rollback()
+            flash('could not store user data', 'otpverify')
+            return redirect(url_for('otpverify', signed_userdata=signed_userdata))
+        finally:
+            cur.close()
+            db.close()
+    return render_template('otpverify.html', signed_userdata=signed_userdata)
+
+@app.route('/login', methods=['POST'])
+def login():
+    email = request.form.get('Email1')
+    password = request.form.get('Password1')
+    db = get_db()
+    cur = db.cursor(buffered=True)
+    try:
+        cur.execute("SELECT user_id, username, password, gender FROM userdata WHERE email=%s", (email,))
+        row = cur.fetchone()
+        if not row:
+            flash('email not found', 'registration')
+            return redirect(url_for('home'))
+
+        # unpack safely (existing users without gender will use default below)
+        user_id, username, stored_hash, gender = row[0], row[1], row[2], row[3] if len(row) > 3 else 'male'
+        gender = gender or 'male'
+
+        if bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
+            session['email'] = email
+            session['user_id'] = user_id
+            session['username'] = username
+            session['gender'] = gender
+            return redirect(url_for('dashboard'))
+        else:
+            flash('invalid credentials', 'registration')
+            return redirect(url_for('home'))
+    finally:
+        cur.close()
+        db.close()
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Logged out', 'registration')
+    return redirect(url_for('home'))
+
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
     if session.get('email') is None:
@@ -134,21 +206,36 @@ def profile():
 
     try:
         if request.method == 'POST':
-            # Handle address update (read-only username/email)
+            # Handle address + gender update (read-only username/email)
             address = (request.form.get('address') or '').strip()
-            cur.execute("UPDATE userdata SET address=%s WHERE user_id=%s", (address, uid))
-            db.commit()
-            flash('Address updated', 'profile')
+            gender = (request.form.get('gender') or 'male').strip().lower()
+            if gender not in ('male', 'female'):
+                gender = 'male'  # default safety
 
-        # Fetch current profile data to render page
-        cur.execute("SELECT username, email, address, profile_pic FROM userdata WHERE user_id=%s", (uid,))
-        user = cur.fetchone()
+            cur.execute(
+                "UPDATE userdata SET address=%s, gender=%s WHERE user_id=%s",
+                (address, gender, uid)
+            )
+            db.commit()
+            # keep session in sync so dashboard can read it
+            session['gender'] = gender
+            flash('Profile updated', 'profile')
+
+        # Fetch current profile data (including gender)
+        cur.execute("""
+            SELECT username, email, address, profile_pic, gender
+            FROM userdata
+            WHERE user_id=%s
+        """, (uid,))
+        user = cur.fetchone() or {}
+        # default if NULL
+        if not user.get('gender'):
+            user['gender'] = 'male'
     finally:
         cur.close()
         db.close()
 
     return render_template('profile.html', user=user)
-
 
 @app.route('/profile/upload', methods=['POST'])
 def profile_upload():
@@ -211,84 +298,12 @@ def profile_upload():
 
     return redirect(url_for('profile'))
 
-
-
-@app.route('/otpverify/<signed_userdata>', methods=['GET', 'POST'])
-def otpverify(signed_userdata):
-    if request.method == 'POST':
-        user_otp = ''.join([request.form.get(f'otp{i}') for i in range(1, 7)])
-        try:
-            de_data = verify_token(data=signed_userdata)
-        except Exception:
-            flash('could not verify otp', 'otpverify')
-            return redirect(url_for('otpverify', signed_userdata=signed_userdata))
-
-        if user_otp != de_data['otp']:
-            flash('given otp was wrong', 'otpverify')
-            return redirect(url_for('otpverify', signed_userdata=signed_userdata))
-
-        # Store user
-        db = get_db()
-        cur = db.cursor(buffered=True)
-        try:
-            bytes_password = de_data['password'].encode('utf-8')
-            hash_password = bcrypt.hashpw(bytes_password, bcrypt.gensalt()).decode('utf-8')
-            cur.execute(
-                "INSERT INTO userdata (username, email, password) VALUES (%s, %s, %s)",
-                (de_data['username'], de_data['email'], hash_password)
-            )
-            db.commit()
-            flash('successfully created account, please login', 'registration')
-            return redirect(url_for('home'))
-        except Exception:
-            db.rollback()
-            flash('could not store user data', 'otpverify')
-            return redirect(url_for('otpverify', signed_userdata=signed_userdata))
-        finally:
-            cur.close()
-            db.close()
-    return render_template('otpverify.html', signed_userdata=signed_userdata)
-
-@app.route('/login', methods=['POST'])
-def login():
-    email = request.form.get('Email1')
-    password = request.form.get('Password1')
-    db = get_db()
-    cur = db.cursor(buffered=True)
-    try:
-        cur.execute("SELECT user_id, username, password FROM userdata WHERE email=%s", (email,))
-        row = cur.fetchone()
-        if not row:
-            flash('email not found', 'registration')
-            return redirect(url_for('home'))
-        user_id, username, stored_hash = row
-        if bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
-            session['email'] = email
-            session['user_id'] = user_id
-            session['username'] = username
-            return redirect(url_for('dashboard'))
-        else:
-            flash('invalid credentials', 'registration')
-            return redirect(url_for('home'))
-    finally:
-        cur.close()
-        db.close()
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    flash('Logged out', 'registration')
-    return redirect(url_for('home'))
-
 # ---------- Personal chat pages ----------
 @app.route('/personal_chat_home')
 def personal_chat_home():
     if session.get('email') is None:
         return redirect(url_for('home'))
-    return render_template('personal_chat_home.html',
-                           user_id=session.get('user_id'),
-                           username=session.get('username'),
-                           email=session.get('email'))
+    return render_template('personal_chat_home.html',user_id=session.get('user_id'),username=session.get('username'),email=session.get('email'))
 
 @app.route('/personal_chat')
 def personal_chat():
@@ -296,11 +311,73 @@ def personal_chat():
     if session.get('email') is None:
         return redirect(url_for('home'))
     other_id = request.args.get('uid', type=int)
-    return render_template('personal_chat.html',
-                           my_id=session.get('user_id'),
-                           other_id=other_id,
-                           username=session.get('username'))
+    return render_template('personal_chat.html',my_id=session.get('user_id'),other_id=other_id,username=session.get('username'))
 
+@app.route('/feedback')
+def feedback():
+    return render_template('feedback.html')
+@app.route('/submit_feedback', methods=['GET','POST'])
+def submit_feedback():
+    if request.method == 'POST':
+        db=get_db()
+        feed=request.form.get('feedback')
+        cursor=db.cursor(buffered=True)
+        cursor.execute("select username,email from userdata where user_id=%s",(session.get('user_id'),))
+        user=cursor.fetchone()
+        feed=f"From: {user[0]} <{user[1]}>\n\n{feed}"
+        subject="Feedback from user"
+        body=f"User Feedback:\n\n{feed}"
+        send_email(to="saicharanthota99@gmail.com", subject=subject, body=body)
+        flash('Thank you for your feedback')
+    return redirect(url_for('feedback'))
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip()
+        if not email:
+            flash('Please enter your email', 'registration')
+            return redirect(url_for('forgot_password'))
+
+        db = get_db()
+        cur = db.cursor(buffered=True)
+        try:
+            cur.execute("SELECT user_id, username FROM userdata WHERE email=%s", (email,))
+            row = cur.fetchone()
+            if not row:
+                # Do NOT reveal that email doesn't exist (for security)
+                flash('If that email exists, a reset link has been sent.', 'registration')
+                return redirect(url_for('forgot_password'))
+
+            user_id, username = row
+
+            # Create signed token with email (and optional user_id)
+            signed = generate_token({
+                'email': email,
+                'user_id': user_id,
+                'purpose': 'password_reset'
+            })
+
+            reset_link = url_for('reset_password', token=quote_plus(signed), _external=True)
+
+            subject = "Reset your password"
+            body = (
+                f"Hello {username},\n\n"
+                f"We received a request to reset your password.\n\n"
+                f"Click the link below to set a new password:\n{reset_link}\n\n"
+                f"If you did not request this, you can ignore this email."
+            )
+
+            send_email(to=email, subject=subject, body=body)
+
+            flash('If that email exists, a reset link has been sent.', 'registration')
+            return redirect(url_for('home'))
+
+        finally:
+            cur.close()
+            db.close()
+
+    # GET
+    return render_template('forgot_password.html')
 
 
 # ---------- REST APIs ----------
@@ -673,12 +750,175 @@ def api_group_upload():
         return {'ok': True, 'file_path': rel_path}
     except Exception as e:
         return {'error': str(e)}, 500
+    
+@app.route('/api/personal/status/<int:uid>')
+def api_personal_status(uid):
+    if session.get('email') is None:
+        return {'error': 'login required'}, 401
+    return {'user_id': uid, 'online': uid in online_users}
+
+@app.route('/api/personal/clear_chat/<int:chat_id>', methods=['DELETE'])
+def api_personal_clear_chat(chat_id):
+    if session.get('email') is None:
+        return {'error': 'login required'}, 401
+    me = session['user_id']
+
+    db = get_db()
+    cur = db.cursor(buffered=True)
+    try:
+        # ensure user is part of this chat
+        cur.execute("SELECT user1, user2 FROM private_chat WHERE chat_id=%s", (chat_id,))
+        row = cur.fetchone()
+        if not row:
+            return {'error': 'chat not found'}, 404
+
+        if me not in row:
+            return {'error': 'not a participant of this chat'}, 403
+
+        cur.execute("DELETE FROM private_message WHERE chat_id=%s", (chat_id,))
+        db.commit()
+        return {'ok': True}
+    except Exception as e:
+        db.rollback()
+        return {'error': str(e)}, 500
+    finally:
+        cur.close()
+        db.close()
+
+@app.route('/api/groups/<int:group_id>/online')
+def api_group_online(group_id):
+    if session.get('email') is None:
+        return {'error': 'login required'}, 401
+    me = session['user_id']
+
+    db = get_db()
+    cur = db.cursor(dictionary=True, buffered=True)
+    try:
+        # ensure user is in this group
+        cur.execute("""
+            SELECT 1 FROM group_member
+            WHERE group_id=%s AND user_id=%s
+            LIMIT 1
+        """, (group_id, me))
+        if not cur.fetchone():
+            return {'error': 'not a member'}, 403
+
+        # get all members
+        cur.execute("""
+            SELECT u.user_id, u.username, u.email
+            FROM group_member gm
+            JOIN userdata u ON u.user_id = gm.user_id
+            WHERE gm.group_id=%s
+        """, (group_id,))
+        members = cur.fetchall()
+
+        # mark which are online (using online_users set)
+        online = [m for m in members if m['user_id'] in online_users]
+        return {'online': online}
+    finally:
+        cur.close()
+        db.close()
+
+@app.route('/api/groups/<int:group_id>/leave', methods=['POST'])
+def api_group_leave(group_id):
+    if session.get('email') is None:
+        return {'error': 'login required'}, 401
+    me = session['user_id']
+
+    db = get_db()
+    cur = db.cursor(buffered=True)
+    try:
+        # ensure group exists
+        cur.execute("SELECT created_by FROM chat_group WHERE id=%s", (group_id,))
+        row = cur.fetchone()
+        if not row:
+            return {'error': 'group not found'}, 404
+        creator = row[0]
+
+        # ensure user is member
+        cur.execute("SELECT 1 FROM group_member WHERE group_id=%s AND user_id=%s", (group_id, me))
+        if not cur.fetchone():
+            return {'error': 'not a member'}, 403
+
+        # remove from group_member
+        cur.execute("DELETE FROM group_member WHERE group_id=%s AND user_id=%s", (group_id, me))
+
+        # if no members left, delete the group entirely (optional)
+        cur.execute("SELECT COUNT(*) FROM group_member WHERE group_id=%s", (group_id,))
+        remaining = cur.fetchone()[0]
+        if remaining == 0:
+            cur.execute("DELETE FROM chat_group WHERE id=%s", (group_id,))
+
+        db.commit()
+        return {'ok': True}
+    except Exception as e:
+        db.rollback()
+        return {'error': str(e)}, 500
+    finally:
+        cur.close()
+        db.close()
+        
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    try:
+        data = verify_token(data=token)
+    except Exception:
+        flash('Invalid or expired reset link', 'registration')
+        return redirect(url_for('home'))
+
+    # Optional: ensure correct purpose
+    if data.get('purpose') != 'password_reset':
+        flash('Invalid reset token', 'registration')
+        return redirect(url_for('home'))
+
+    email = data.get('email')
+
+    if request.method == 'POST':
+        new_password = (request.form.get('password') or '').strip()
+        confirm = (request.form.get('confirm') or '').strip()
+
+        if not new_password or not confirm:
+            flash('Please fill both password fields', 'registration')
+            return redirect(url_for('reset_password', token=token))
+
+        if new_password != confirm:
+            flash('Passwords do not match', 'registration')
+            return redirect(url_for('reset_password', token=token))
+
+        # Update password in DB
+        db = get_db()
+        cur = db.cursor(buffered=True)
+        try:
+            hash_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            cur.execute("UPDATE userdata SET password=%s WHERE email=%s", (hash_password, email))
+            db.commit()
+            flash('Password reset successfully. Please login.', 'registration')
+            return redirect(url_for('home'))
+        except Exception:
+            db.rollback()
+            flash('Could not reset password, try again.', 'registration')
+            return redirect(url_for('reset_password', token=token))
+        finally:
+            cur.close()
+            db.close()
+
+    # GET
+    return render_template('reset_password.html', email=email)
+
 
 # ---------- Socket.IO ----------
 @socketio.on('connect')
 def sio_connect():
-    if session.get('user_id') is None:
-        return False  # reject
+    uid = session.get('user_id')
+    if uid is None:
+        return False  # reject not-logged-in connections
+
+    # mark user online
+    online_users.add(uid)
+    join_room(f"user:{uid}")
+    # notify watchers of this user
+    emit('presence', {'user_id': uid, 'status': 'online'}, room=f"user:{uid}", include_self=False)
+
 
 @socketio.on('join_group')
 def sio_join_group(data):
@@ -687,6 +927,7 @@ def sio_join_group(data):
     if not uid:
         emit('error', {'message': 'not logged in'})
         return
+        
 
     db = get_db()
     cur = db.cursor(buffered=True)
@@ -701,11 +942,181 @@ def sio_join_group(data):
         cur.close()
         db.close()
 
+@socketio.on('private_typing')
+def sio_private_typing(data):
+    chat_id = data.get('chat_id')
+    uid = session.get('user_id')
+    if not uid or not chat_id:
+        return
+    try:
+        chat_id = int(chat_id)
+    except ValueError:
+        return
+
+    emit(
+        'private_typing',
+        {
+            'chat_id': chat_id,
+            'user_id': uid,
+            'username': session.get('username', 'Someone')
+        },
+        room=f"private:{chat_id}",
+        include_self=False
+    )
+
+
+@socketio.on('private_stop_typing')
+def sio_private_stop_typing(data):
+    chat_id = data.get('chat_id')
+    uid = session.get('user_id')
+    if not uid or not chat_id:
+        return
+    try:
+        chat_id = int(chat_id)
+    except ValueError:
+        return
+
+    emit(
+        'private_stop_typing',
+        {
+            'chat_id': chat_id,
+            'user_id': uid
+        },
+        room=f"private:{chat_id}",
+        include_self=False
+    )
+
+@socketio.on('edit_private_message')
+def sio_edit_private_message(data):
+    uid = session.get('user_id')
+    if not uid:
+        return
+
+    chat_id = data.get('chat_id')
+    msg_id = data.get('message_id')
+    new_content = (data.get('content') or '').strip()
+
+    if not chat_id or not msg_id or not new_content:
+        return
+
+    try:
+        chat_id = int(chat_id)
+        msg_id = int(msg_id)
+    except ValueError:
+        return
+
+    db = get_db()
+    cur = db.cursor(dictionary=True, buffered=True)
+    try:
+        # ensure message belongs to this chat and this user is the sender
+        cur.execute("SELECT chat_id, sender_id FROM private_message WHERE id=%s", (msg_id,))
+        row = cur.fetchone()
+        if not row or row['chat_id'] != chat_id or row['sender_id'] != uid:
+            emit('error', {'message': 'cannot edit this message'})
+            return
+
+        cur.execute("UPDATE private_message SET content=%s WHERE id=%s", (new_content, msg_id))
+        db.commit()
+
+        # fetch updated message
+        cur.execute("""
+            SELECT pm.id, pm.chat_id, pm.sender_id, u.username AS sender_name, u.profile_pic,
+                   pm.content, pm.file_path, pm.created_at
+            FROM private_message pm
+            JOIN userdata u ON u.user_id = pm.sender_id
+            WHERE pm.id=%s
+        """, (msg_id,))
+        msg = cur.fetchone()
+        if isinstance(msg.get('created_at'), datetime):
+            msg['created_at'] = msg['created_at'].isoformat(sep=' ', timespec='seconds')
+
+        emit('private_message_edited', msg, room=f"private:{chat_id}")
+    finally:
+        cur.close()
+        db.close()
+
 @socketio.on('leave_group')
 def sio_leave_group(data):
     gid = int(data.get('group_id'))
     leave_room(f"group:{gid}")
-    emit('system', {'message': f"{session.get('username','Someone')} left"}, room=f"group:{gid}", include_self=False)
+    emit('system', {'message': f"{session.get('username','Someone')} left the group"}, room=f"group:{gid}", include_self=False)
+
+@socketio.on('disconnect')
+def sio_disconnect():
+    uid = session.get('user_id')
+    if not uid:
+        return
+    online_users.discard(uid)
+    # notify anyone watching this user
+    emit('presence', {'user_id': uid, 'status': 'offline'}, room=f"user:{uid}", include_self=False)
+
+@socketio.on('edit_group_message')
+def sio_edit_group_message(data):
+    uid = session.get('user_id')
+    if not uid:
+        return
+
+    group_id = data.get('group_id')
+    msg_id = data.get('message_id')
+    new_content = (data.get('content') or '').strip()
+
+    if not group_id or not msg_id or not new_content:
+        return
+
+    try:
+        group_id = int(group_id)
+        msg_id = int(msg_id)
+    except ValueError:
+        return
+
+    db = get_db()
+    cur = db.cursor(dictionary=True, buffered=True)
+    try:
+        # ensure message exists and belongs to this group and this user is sender
+        cur.execute("SELECT group_id, sender_id FROM message WHERE id=%s", (msg_id,))
+        row = cur.fetchone()
+        if not row or row['group_id'] != group_id or row['sender_id'] != uid:
+            emit('error', {'message': 'cannot edit this message'})
+            return
+
+        cur.execute("UPDATE message SET content=%s WHERE id=%s", (new_content, msg_id))
+        db.commit()
+
+        # fetch updated message with sender info
+        cur.execute("""
+            SELECT m.id, m.sender_id, u.username AS sender_name, m.content, m.file_path, m.created_at
+            FROM message m
+            JOIN userdata u ON u.user_id = m.sender_id
+            WHERE m.id=%s
+        """, (msg_id,))
+        msg = cur.fetchone()
+        if isinstance(msg.get('created_at'), datetime):
+            msg['created_at'] = msg['created_at'].isoformat(sep=' ', timespec='seconds')
+
+        emit('group_message_edited', msg, room=f"group:{group_id}")
+    finally:
+        cur.close()
+        db.close()
+
+@socketio.on('watch_user')
+def sio_watch_user(data):
+    uid = session.get('user_id')
+    if not uid:
+        return
+    other_id = data.get('user_id')
+    if not other_id:
+        return
+    try:
+        other_id = int(other_id)
+    except ValueError:
+        return
+
+    # join a room that receives presence updates about "other_id"
+    join_room(f"user:{other_id}")
+
+    # send immediate presence status to this socket
+    status = 'online' if other_id in online_users else 'offline'
+    emit('presence', {'user_id': other_id, 'status': status})
 
 @socketio.on('send_message')
 def sio_send_message(data):
@@ -885,7 +1296,5 @@ def sio_private_message(data):
         db.close()
 
 
-# ---------- Run ----------
 if __name__ == '__main__':
-    # threading mode -> regular Flask dev server is fine
     socketio.run(app, debug=True, use_reloader=True)

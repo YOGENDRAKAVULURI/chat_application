@@ -1,0 +1,250 @@
+{% extends "dashboard.html" %}
+
+{% block content %}
+<style>
+        :root{
+            --bg1:#0f172a;
+            --bg2:#0b3b55;
+            --card:#0b1220cc;
+            --accent:#6ee7b7;
+            --muted:#94a3b8;
+            --glass: rgba(255,255,255,0.04);
+        }
+        /* animated moving diagonal stripes using pseudo-element */
+        body::before{
+            content:'';
+            position:fixed;
+            inset:0;
+            background: radial-gradient(circle at 10% 20%, rgba(110,231,183,0.06), transparent 8%), radial-gradient(circle at 90% 80%, rgba(99,102,241,0.04), transparent 12%);
+            z-index:0;
+            pointer-events:none;
+            animation: floatBG 12s linear infinite;
+            mix-blend-mode: screen;
+        }
+        @keyframes floatBG{
+            0%{transform:translateY(0) translateX(0) rotate(0deg)}
+            50%{transform:translateY(-12px) translateX(6px) rotate(1deg)}
+            100%{transform:translateY(0) translateX(0) rotate(0deg)}
+        }
+
+        .wrap{
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:48px 20px;
+            position:relative;
+            z-index:1;
+        }
+
+        .card{
+            width:100%;
+            max-width:780px;
+           background: linear-gradient(180deg, #EDE9FE, #DDD6FE);
+
+            border:1px solid rgba(255,255,255,0.04);
+            border-radius:14px;
+            padding:28px;
+            box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+            backdrop-filter: blur(6px) saturate(120%);
+            position:relative;
+            overflow:hidden;
+            transform:translateY(10px);
+            animation: cardIn 600ms cubic-bezier(.16,.84,.24,1) both;
+        }
+        @keyframes cardIn{
+            from{opacity:0; transform:translateY(30px) scale(.995)}
+            to{opacity:1; transform:translateY(0) scale(1)}
+        }
+
+        h1{
+            font-size:1.75rem;
+            margin:0 0 10px 0;
+            letter-spacing:-0.3px;
+           background: linear-gradient(180deg, #FF5722, #E64A19);
+
+
+            -webkit-background-clip: text;
+            background-clip: text;
+            color:transparent;
+            position:relative;
+            overflow:visible;
+        }
+        /* shimmer */
+        h1::after{
+            content:'';
+            position:absolute;
+            left:-40%;
+            top:0; bottom:0;
+            width:40%;
+            background:linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.22), rgba(255,255,255,0.06));
+            transform:skewX(-20deg);
+            animation: shimmer 2.2s linear infinite;
+            pointer-events:none;
+        }
+        @keyframes shimmer{100%{left:120%}}
+
+        p.lead{color:var(--muted); margin-top:6px; margin-bottom:20px}
+
+        form{display:grid; gap:12px}
+
+        label{font-size:0.95rem; color:var(--muted); display:block}
+
+        textarea{
+            width:100%;
+            min-height:140px;
+            resize:vertical;
+            padding:14px;
+            border-radius:10px;
+            border:1px solid rgba(255,255,255,0.04);
+             background: linear-gradient(180deg, #E4FFCF, #C6F6A8);
+
+            color:inherit;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+            transition: box-shadow .18s ease, transform .12s ease, border-color .12s ease;
+            font-size:1rem;
+            line-height:1.45;
+        }
+        textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 6px 18px rgba(9,17,28,0.45); transform:translateY(-2px)}
+
+        .meta{
+            display:flex; justify-content:space-between; align-items:center; gap:12px;
+            color:var(--muted); font-size:0.9rem
+        }
+
+        .btn{
+            display:inline-block;
+            padding:10px 18px;
+            border-radius:10px;
+            border:0; cursor:pointer;
+            background: linear-gradient(180deg, #FF5722, #E64A19);
+
+            color:var(--accent);
+            font-weight:600;
+            position:relative;
+            overflow:hidden;
+            transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+        }
+        .btn:hover{transform:translateY(-3px); box-shadow:0 8px 20px rgba(2,6,23,0.5)}
+
+        /* ripple */
+        .ripple{position:absolute; border-radius:50%; transform:scale(0); background:rgba(255,255,255,0.12); pointer-events:none}
+
+        .notice{
+            position:fixed; right:18px; top:18px; padding:10px 16px; border-radius:10px; background:rgba(6,78,59,0.9); color:#dffcf1; font-weight:600; box-shadow:0 8px 24px rgba(2,8,23,0.6); opacity:0; transform:translateY(-10px) scale(.98); transition:opacity .25s ease, transform .25s ease; z-index:9999
+        }
+        .notice.show{opacity:1; transform:translateY(0) scale(1)}
+
+        /* invalid shake */
+        .shake{animation: shake .46s cubic-bezier(.36,.07,.19,.97) both}
+        @keyframes shake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-4px)}40%,60%{transform:translateX(4px)}}
+
+        /* small responsive adjustments */
+        @media (max-width:520px){
+            .card{padding:18px}
+            h1{font-size:1.4rem}
+        }
+</style>
+    <div class="wrap">
+        <div class="card" role="main">
+            <h1>Feedback</h1>
+            <p class="lead">We appreciate your thoughts — tell us what you liked or what we can improve.</p>
+
+            <form id="feedbackForm" method="post" action="{{ url_for('submit_feedback') }}">
+                <div>
+                    <label for="feedback">Your Feedback</label>
+                    <textarea id="feedback" name="feedback" placeholder="Share anything helpful..." maxlength="2000"></textarea>
+                </div>
+
+                <div class="meta">
+                    <div id="charCount">0 / 2000</div>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <button type="submit" class="btn" id="submitBtn">Submit</button>
+                    </div>
+                </div>
+            </form> 
+
+        </div>
+    </div>
+
+    <div id="notice" class="notice" aria-live="polite">Feedback sent</div>
+
+    <script>
+        (function(){
+            const textarea = document.getElementById('feedback');
+            const count = document.getElementById('charCount');
+            const form = document.getElementById('feedbackForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const notice = document.getElementById('notice');
+
+            // restore draft from sessionStorage
+            try{
+                const draft = sessionStorage.getItem('feedback:draft');
+                if(draft && !textarea.value) textarea.value = draft;
+            }catch(e){}
+
+            function updateCount(){
+                const len = textarea.value.length;
+                count.textContent = len + ' / ' + textarea.getAttribute('maxlength');
+            }
+            updateCount();
+            textarea.addEventListener('input', function(){
+                updateCount();
+                try{ sessionStorage.setItem('feedback:draft', textarea.value); }catch(e){}
+            });
+
+            // ripple effect on button
+            submitBtn.addEventListener('click', function(e){
+                const rect = submitBtn.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const r = Math.max(rect.width, rect.height) * 1.2;
+                const ripple = document.createElement('span');
+                ripple.className = 'ripple';
+                ripple.style.width = ripple.style.height = r + 'px';
+                ripple.style.left = (x - r/2) + 'px';
+                ripple.style.top = (y - r/2) + 'px';
+                submitBtn.appendChild(ripple);
+                requestAnimationFrame(()=>{ ripple.style.transform = 'scale(1)'; ripple.style.transition = 'transform .6s ease, opacity .9s ease'; ripple.style.opacity = '0'; });
+                setTimeout(()=>{ ripple.remove(); }, 900);
+            });
+
+            // form submit with simple validation and animation
+            form.addEventListener('submit', function(e){
+                if(textarea.value.trim().length === 0){
+                    e.preventDefault();
+                    textarea.classList.remove('shake');
+                    // reflow to restart animation
+                    void textarea.offsetWidth;
+                    textarea.classList.add('shake');
+                    showNotice('Please enter some feedback before submitting', true);
+                    return false;
+                }
+
+                // disable submit to prevent double submissions and show subtle success animation
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.7';
+
+                // brief success UI then submit the form normally so Flask receives CSRF tokens if present
+                e.preventDefault();
+                showNotice('Sending…');
+                setTimeout(function(){
+                    try{ sessionStorage.removeItem('feedback:draft'); }catch(e){}
+                    form.submit();
+                }, 700);
+            });
+
+            function showNotice(text, isError){
+                notice.textContent = text;
+                if(isError){ notice.style.background = 'rgba(104,33,52,0.9)'; }
+                else{ notice.style.background = 'rgba(6,78,59,0.9)'; }
+                notice.classList.add('show');
+                clearTimeout(notice._hide);
+                notice._hide = setTimeout(()=>{ notice.classList.remove('show'); }, 3200);
+            }
+
+            // small accessibility: focus textarea with keyboard shortcut 'f'
+            window.addEventListener('keydown', function(e){ if(e.key === 'f' || e.key === 'F'){ if(document.activeElement !== textarea) textarea.focus(); }});
+
+        })();
+ </script>
+{% endblock %}

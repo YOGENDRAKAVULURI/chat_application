@@ -45,6 +45,7 @@ body {
     height: 100vh;
     overflow-y: auto;
     padding: 2.5rem;
+    padding-top: 120px;
     box-sizing: border-box;
     margin-left: 12rem !important;   /* was 9rem — increased to clear navbar */
     width: calc(100% - 12rem) !important;
@@ -408,6 +409,26 @@ h1 {
     font-size: 0.75rem;
     margin-top: 4px;
 }
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+}
+
+.gender-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 700;
+  background: #eef2ff;
+  color: #4c1d95;
+}
+
 
 /* ------------------ RESPONSIVE ------------------ */
 @media (max-width: 1024px) {
@@ -492,12 +513,15 @@ h1 {
       <a href="{{ url_for('profile') }}" class="navbar__link"><i data-feather="user"></i><span>Profile</span></a>
     </li>
     <li class="navbar__item">
+      <a href="{{ url_for('feedback') }}" class="navbar__link"><i data-feather="life-buoy"></i><span>feedback</span></a>
+    </li>
+    <li class="navbar__item">
       <a href="{{ url_for('logout') }}" class="navbar__link"><i data-feather="log-out"></i><span>Logout</span></a>
     </li>
   </ul>
 </nav>
 
-<div class="content">
+<div class="content" >
   {% with messages = get_flashed_messages() %}
     {% if messages %}
       <div class="card">
@@ -509,8 +533,17 @@ h1 {
   {% endwith %}
 
   {% block content %}
-  <h1>Welcome to the Dashboard</h1>
-  <h2>User: {{session.get('username')}}</h2>
+ 
+
+{% set gender = session.get('gender', 'male') %}
+
+<div style="position:fixed; top:50px; right:50px; text-align:center; z-index:2000;">
+  <img src="{{ '/static/female.png' if gender == 'female' else '/static/male.png' }}"
+       style="width:64px;height:80px;border-radius:12px;object-fit:cover;display:block;margin:auto;">
+  <div style="margin-top:6px;font-weight:600;">{{ session.get('username') }}</div>
+</div>
+
+    
   <img src="{{ url_for('static', filename='dasboaed.jpg') }}" alt="Background Image" width="75%" >
   {% endblock %}
 </div>
