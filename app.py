@@ -1,13 +1,12 @@
 import bcrypt
 from datetime import datetime
 from flask import (Flask, flash, render_template, redirect, url_for,request, session, jsonify)
-import os
 import uuid
 from werkzeug.utils import secure_filename
 from flask_session import Session
 from flask_socketio import SocketIO, join_room, leave_room, emit
 import mysql.connector
-
+import os
 from cmail import send_email       # you said you have these
 from otp import userotp
 from stoken import generate_token, verify_token
@@ -33,10 +32,11 @@ socketio = SocketIO(app, manage_session=False, async_mode='threading')
 # ---------- DB helper: open a NEW connection per request/event ----------
 def get_db():
     return mysql.connector.connect(
-        user='root',
-        password='121212@',
-        host='localhost',
-        database='chatdb',
+        user=os.environ["avnadmin"],
+        password=os.environ["AVNS_GFB11cv7-ZBLCrZ1U8l"],
+        host=os.environ["mysql-15f29160-yogendrakavuluri8-9c23.g.aivencloud.com"],
+        database=os.environ["defaultdb"],
+        port=int(os.environ.get("11312", 3306)),
         autocommit=False
     )
 
