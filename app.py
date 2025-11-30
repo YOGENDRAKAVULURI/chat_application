@@ -1297,4 +1297,13 @@ def sio_private_message(data):
 
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, use_reloader=True)
+    # Render (or any cloud host) will set the PORT env variable
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(
+        app,
+        host="0.0.0.0",  # listen on all interfaces
+        port=port,
+        debug=False,     # turn off debug in production
+        use_reloader=False
+    )
+
