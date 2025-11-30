@@ -13,7 +13,7 @@ from stoken import generate_token, verify_token
 from urllib.parse import quote_plus  # add at the top if not present
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'apple'  # change for production
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "dev-secret")
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 # where to store uploaded avatars
@@ -32,13 +32,14 @@ socketio = SocketIO(app, manage_session=False, async_mode='threading')
 # ---------- DB helper: open a NEW connection per request/event ----------
 def get_db():
     return mysql.connector.connect(
-        user=os.environ["avnadmin"],
-        password=os.environ["AVNS_GFB11cv7-ZBLCrZ1U8l"],
-        host=os.environ["mysql-15f29160-yogendrakavuluri8-9c23.g.aivencloud.com"],
-        database=os.environ["defaultdb"],
-        port=int(os.environ.get("11312", 3306)),
+        user=os.environ["DB_USER"],
+        password=os.environ["DB_PASSWORD"],
+        host=os.environ["DB_HOST"],
+        database=os.environ["DB_NAME"],
+        port=int(os.environ.get("DB_PORT", 3306)),
         autocommit=False
     )
+
 
 # ---------- Utilities ----------
 def require_login_redirect():
