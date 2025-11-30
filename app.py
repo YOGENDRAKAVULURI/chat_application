@@ -37,7 +37,7 @@ def get_db():
         host=os.environ["DB_HOST"],
         database=os.environ["DB_NAME"],
         port=int(os.environ.get("DB_PORT")),
-        autocommit=False
+        autocommit=True
     )
 
 
