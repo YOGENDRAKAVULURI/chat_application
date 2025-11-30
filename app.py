@@ -1299,7 +1299,7 @@ def sio_private_message(data):
 
 if __name__ == '__main__':
     # Render (or any cloud host) will set the PORT env variable
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT"))
     socketio.run(
         app,
         host="0.0.0.0",  # listen on all interfaces
