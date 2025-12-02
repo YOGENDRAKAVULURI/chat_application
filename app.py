@@ -27,7 +27,7 @@ def allowed_image(filename: str) -> bool:
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTS
 
 # IMPORTANT: threading mode is safest on Windows/Python 3.13
-socketio = SocketIO(app, manage_session=False, async_mode='threading')
+socketio = SocketIO(app, manage_session=False, async_mode='gevent')
 
 # ---------- DB helper: open a NEW connection per request/event ----------
 def get_db():
