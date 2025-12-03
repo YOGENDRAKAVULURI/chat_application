@@ -438,77 +438,58 @@ h1 {
 }
 @media (max-width: 768px) {
 
-    /* Make ALL 6 items fit the screen */
+    .navbar {
+        display: flex;
+        flex-direction: row;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 0.4rem 0;
+        border-radius: 0;
+        justify-content: center;
+        background: #fff;
+    }
+
     .navbar__menu {
+        display: flex;
+        flex-direction: row;
         width: 100%;
         justify-content: space-between;
-        overflow: hidden;
         padding: 0;
         margin: 0;
     }
 
-    /* Every icon/text becomes same width */
     .navbar__item {
         flex: 1;
+        min-width: 0;    /* IMPORTANT */
         text-align: center;
     }
 
     .navbar__link {
         width: 100%;
-        padding: 0.6rem 0;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
+        padding: 0.4rem 0.3rem;
         border-radius: 10px;
-    }
-
-    /* Icons */
-    .navbar__link i {
-        width: 22px;
-        height: 22px;
-    }
-
-    /* Labels */
-    .navbar__link span {
-        font-size: 0.75rem;
-        margin-top: 4px;
-        white-space: nowrap;
-    }
-}
-@media (max-width: 768px) {
-    /* Make navbar bottom on small screens, remove left margin so content uses full width */
-    .navbar {
-        flex-direction: row;
-        top: auto;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        transform: none;
-        border-radius: 0;
+        flex-direction: column;
+        align-items: center;
         justify-content: center;
-        padding: 0.75rem;
     }
 
-    .navbar__menu {
-        flex-direction: row;
-    }
-
-    .navbar__link {
-        width: auto;
-        height: auto;
-        padding: 0.75rem 1rem;
-        border-radius: 12px;
+    .navbar__link i {
+        width: 20px;
+        height: 20px;
     }
 
     .navbar__link span {
-        font-size: 0.85rem;
+        font-size: 0.65rem;
+        white-space: nowrap;
+        margin-top: 3px;
     }
 
-    /* remove left offset when screen is narrow */
     .content {
         margin-left: 0 !important;
         width: 100% !important;
-        padding-bottom: 4.5rem; /* keep space for bottom navbar */
+        padding-bottom: 4.5rem;
     }
 }
 
