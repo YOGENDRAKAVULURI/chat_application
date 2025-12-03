@@ -436,7 +436,45 @@ h1 {
     :root { --left-offset-default: 8rem; --left-offset-navbar: 7rem; }
     .navbar + .content { margin-left: var(--left-offset-navbar); width: calc(100% - var(--left-offset-navbar)); }
 }
+@media (max-width: 768px) {
 
+    /* Make ALL 6 items fit the screen */
+    .navbar__menu {
+        width: 100%;
+        justify-content: space-between;
+        overflow: hidden;
+        padding: 0;
+        margin: 0;
+    }
+
+    /* Every icon/text becomes same width */
+    .navbar__item {
+        flex: 1;
+        text-align: center;
+    }
+
+    .navbar__link {
+        width: 100%;
+        padding: 0.6rem 0;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        border-radius: 10px;
+    }
+
+    /* Icons */
+    .navbar__link i {
+        width: 22px;
+        height: 22px;
+    }
+
+    /* Labels */
+    .navbar__link span {
+        font-size: 0.75rem;
+        margin-top: 4px;
+        white-space: nowrap;
+    }
+}
 @media (max-width: 768px) {
     /* Make navbar bottom on small screens, remove left margin so content uses full width */
     .navbar {
