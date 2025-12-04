@@ -5,6 +5,9 @@ def send_email(to: str, subject: str, body: str) -> bool:
     """Send a plain-text email via Brevo."""
     BREVO_API_KEY = os.environ.get("BREVO_API_KEY")  # Read here every time
 
+    print("Loaded KEY:", BREVO_API_KEY[:7] if BREVO_API_KEY else None)
+    print("SENDER VERIFIED TEST")
+    
     if not BREVO_API_KEY:
         print("BREVO_API_KEY is not set in environment")
         return False
