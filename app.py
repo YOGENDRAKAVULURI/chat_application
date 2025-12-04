@@ -584,7 +584,7 @@ def api_personal_search():
     cur = db.cursor(dictionary=True, buffered=True)
     try:
         cur.execute("""
-            SELECT user_id, username, email, profile_pic
+            SELECT DISTINCT user_id, username, email, profile_pic
             FROM userdata
             WHERE (username LIKE %s OR email LIKE %s) AND user_id <> %s
             LIMIT 20
