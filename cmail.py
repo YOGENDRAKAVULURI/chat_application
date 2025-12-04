@@ -9,7 +9,7 @@ def send_email(to: str, subject: str, body: str) -> bool:
         print("BREVO_API_KEY is not set in environment")
         return False
 
-    sender_email = "kavuluriyogendra@gmail.com"
+    sender_email = "yogendrakavuluri8@gmail.com"
     sender_name = "Chat Application"
 
     payload = {
