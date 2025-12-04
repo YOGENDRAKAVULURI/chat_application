@@ -222,5 +222,32 @@
       </form>
     </div>
   </main>
+  <script>
+const inputs = document.querySelectorAll(".otp-input");
+
+inputs.forEach((input, index) => {
+  input.addEventListener("input", () => {
+    if (input.value.length === 1 && index < inputs.length - 1) {
+      inputs[index + 1].focus();   // go to next box
+    }
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Backspace" && input.value === "" && index > 0) {
+      inputs[index - 1].focus();   // go back to previous box
+    }
+  });
+});
+
+// 🔥 Paste full OTP at once
+inputs[0].addEventListener("paste", (e) => {
+  e.preventDefault();
+  const text = (e.clipboardData.getData("text") || "").trim();
+  if (text.length === inputs.length) {
+    inputs.forEach((box, i) => (box.value = text[i] || ""));
+    inputs[inputs.length - 1].focus();
+  }
+});
+</script>
 </body>
 </html>
