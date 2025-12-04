@@ -133,7 +133,7 @@ def otpverify(signed_userdata):
             flash('could not verify otp', 'otpverify')
             return redirect(url_for('otpverify', signed_userdata=signed_userdata))
 
-        if user_otp != "123456":
+        if user_otp != de_data['otp']:
             flash('given otp was wrong', 'otpverify')
             return redirect(url_for('otpverify', signed_userdata=signed_userdata))
 
