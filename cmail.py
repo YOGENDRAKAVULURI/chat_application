@@ -1,27 +1,28 @@
 import os
-from mailersend import MailerSend
+from mailersend import emails
 
 def send_email(to, subject, body):
     try:
-        mailer = MailerSend(api_key=os.environ["MAILERSEND_API_KEY"])
+        mailer = emails.NewEmail(os.environ["MAILERSEND_API_KEY"])
 
-        mailer.email.send(
-            {
-                "from": {
-                    "email": "noreply@mailersend.net",
-                    "name": "Chat App"
-                },
-                "to": [
-                    {"email": to}
-                ],
-                "subject": subject,
-                "text": body
-            }
-        )
+        mail_body = {
+            "from": {
+                "email": "noreply@mailersend.net",
+                "name": "Chat App"
+            },
+            "to": [
+                {
+                    "email": to
+                }
+            ],
+            "subject": subject,
+            "text": body
+        }
 
-        print("Mail sent successfully")
+        response = mailer.send(mail_body)
+        print("Mail sent:", response)
         return True
 
     except Exception as e:
-        print("Mailersend error:", e)
+        print("Send mail failed:", e)
         return False
