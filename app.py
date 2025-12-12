@@ -111,7 +111,7 @@ def register():
             body = f"Hello {username},\nYour OTP for signup is {otp_code}.\nPlease do not share it with anyone."
             send_email(to=email, subject=subject, body=body)
 
-            signed = generate_token(data={
+            signed = generate_token({
                 'username': username,
                 'email': email,
                 'password': password,
@@ -128,7 +128,7 @@ def otpverify(signed_userdata):
     if request.method == 'POST':
         user_otp = ''.join([request.form.get(f'otp{i}') for i in range(1, 7)])
         try:
-            de_data = verify_token(data=signed_userdata)
+            de_data = verify_token(signed_userdata)
         except Exception:
             flash('could not verify otp', 'otpverify')
             return redirect(url_for('otpverify', signed_userdata=signed_userdata))
