@@ -1,5 +1,8 @@
+import os
+os.environ["EVENTLET_NO_GREENDNS"] = "yes"
+
 import eventlet
-eventlet.monkey_patch(dns=False)
+eventlet.monkey_patch()
 
 import bcrypt
 from datetime import datetime
