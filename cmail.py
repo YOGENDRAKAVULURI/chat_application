@@ -1,6 +1,6 @@
 from mailersend import emails
 
-def send_mail(to_email, otp):
+def send_email(to_email, otp):
     mailer = emails.NewEmail(api_key=os.environ["MAILERSEND_API_KEY"])
 
     mail_body = {
