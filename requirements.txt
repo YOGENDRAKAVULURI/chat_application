@@ -87,5 +87,6 @@ setuptools
 gunicorn
 gevent
 gevent-websocket
-mailersend
+mailersend-python==1.4.4
+
 
