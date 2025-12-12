@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch(dns=False)
+
 import bcrypt
 from datetime import datetime
 from flask import (Flask, flash, render_template, redirect, url_for,request, session, jsonify)
