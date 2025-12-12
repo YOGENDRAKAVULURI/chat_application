@@ -87,4 +87,5 @@ setuptools
 gunicorn
 gevent
 gevent-websocket
+mailersend
 
